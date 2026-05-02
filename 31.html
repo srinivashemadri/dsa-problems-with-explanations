@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 31 — Next Permutation</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #000;
+      margin: 22px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="title">LeetCode 31 — Next Permutation</div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <span class="label">Input:</span> An integer array <b>nums</b>, where the goal is to rearrange the numbers into the next lexicographically larger permutation of the same multiset of values.
+    If no such larger permutation exists, the array must become the smallest possible permutation.
+  </p>
+  <p>
+    <span class="label">Output:</span> Modify the array in place so that it becomes the next permutation.
+  </p>
+  <p>
+    <span class="label">Key Constraints:</span> The operation must be done in-place with constant extra space, and the result must be the next arrangement in lexicographic order, not just any larger arrangement.
+    Duplicates are allowed, so the logic must work even when equal values appear.
+  </p>
+  <p>
+    <span class="label">Edge Cases:</span> empty array, single element, strictly increasing order, strictly decreasing order, all elements equal, repeated values, and pivots near the end of the array.
+  </p>
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    This problem is really asking: given the current permutation, find the smallest permutation that is still greater than it. In other words, move to the <b>next lexicographic arrangement</b>.
+  </p>
+  <p>
+    The core challenge is to change the array as little as possible while still making it larger.
+  </p>
+  <p>
+    <span class="label">Category:</span> array manipulation, greedy, permutation logic.
+  </p>
+  <p>
+    <span class="label">Mental Model:</span> think of the array like a number written digit by digit. To get the next number, you try to increase it from the right side first, because changing the right side keeps the increase minimal.
+  </p>
+  <p>
+    <span class="label">Subtle Trap:</span> many candidates try to sort the whole array or scan from the left. That either becomes too slow or gives the wrong permutation. The key is to find the first position from the right where the order stops being descending.
+  </p>
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The naive idea is to generate every permutation, sort them lexicographically, and pick the one right after the current array. That is conceptually simple but completely impractical.
+  </p>
+
+  <pre>
+Pseudocode:
+
+1. Generate all permutations of nums.
+2. Sort all permutations lexicographically.
+3. Find the current permutation in that list.
+4. Return the next one if it exists; otherwise return the first permutation.
+
+Why this works:
+- It explicitly constructs the permutation order.
+- The answer is literally the next element in sorted order.
+
+Time Complexity:
+- There are n! permutations.
+- Sorting them adds extra cost.
+- Overall complexity is far too large: O(n! * n log(n!)) in practice, or worse depending on implementation.
+
+Space Complexity:
+- O(n! * n) if all permutations are stored.
+- This is the main bottleneck.
+
+Performance Bottleneck:
+- The explosion in the number of permutations makes this unusable even for moderate n.
+  </pre>
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p><b>Test Case 1</b></p>
+  <pre>Input: 1 2 3
+    Current order is increasing.
+    Scan from right: 2 &lt; 3, so pivot = 2.
+    We only need the smallest increase, so swap pivot with the next greater element in the suffix.
+
+Action: Swap 2 and 3
+Result: 1 3 2</pre>
+
+  <p><b>Test Case 2</b></p>
+  <pre>Input: 3 2 1
+    Entire array is decreasing.
+    There is no pivot because no position satisfies nums[i] &lt; nums[i + 1].
+    This means the current permutation is the highest possible permutation.
+
+Action: Reverse entire array
+Result: 1 2 3</pre>
+
+  <p><b>Test Case 3</b></p>
+  <pre>Input: 1 5 1
+    Scan from right:
+      5 &gt; 1, keep moving left.
+      1 &lt; 5, pivot = first 1.
+    Suffix is 5 1, which is decreasing.
+    We need the smallest element in the suffix that is greater than pivot.
+
+Action:
+    Swap pivot 1 with 5
+    Reverse suffix after pivot
+
+Result: 5 1 1</pre>
+
+  <p>
+    The inefficiency in brute force is obvious here: we do not need all permutations. We only need to change the array at the first place from the right where it can still become larger, then make the suffix as small as possible.
+  </p>
+  <p>
+    The key insight is this: the suffix to the right of the pivot is already in descending order. That means it is the largest arrangement of those suffix elements. Once we choose a larger element for the pivot, the best way to get the next permutation is to turn the suffix into its smallest arrangement, which is ascending order.
+  </p>
+  <p>
+    A rare edge case that often gets missed is an array with duplicates, such as <code>1 1 5</code> or <code>1 5 1</code>. The same pivot logic still works because we only care about strict inequality for the pivot and then choose the next larger element from the suffix.
+  </p>
+  <p>
+    The signal that should immediately trigger this approach in future problems is: <b>“find the next lexicographic arrangement with minimum possible change, in-place.”</b>
+  </p>
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    There is one optimal solution here: a greedy one-pass scan from right to left, followed by a swap and a suffix reversal.
+    This is the standard in-place next permutation algorithm.
+  </p>
+
+  <p><b>Idea</b></p>
+  <p>
+    Find the first index <b>i</b> from the right such that <code>nums[i] &lt; nums[i + 1]</code>. That index is the pivot.
+    Then find the smallest number in the suffix that is greater than <code>nums[i]</code>, swap them, and reverse the suffix after <code>i</code>.
+  </p>
+
+  <p><b>Pseudocode</b></p>
+  <pre>
+1. Find the pivot:
+   Start from the second last index and move left while nums[i] >= nums[i + 1].
+
+2. If pivot does not exist:
+   Reverse the entire array and stop.
+
+3. Find the rightmost element greater than nums[pivot].
+
+4. Swap nums[pivot] with that element.
+
+5. Reverse the suffix from pivot + 1 to end.
+  </pre>
+
+  <p><b>Full Working C++17 Code</b></p>
+  <pre>
+void nextPermutation(vector&lt;int&gt;&amp; nums) {
+    int n = nums.size();
+    if (n &lt;= 1) return;
+
+    int i = n - 2;
+
+    while (i &gt;= 0 &amp;&amp; nums[i] &gt;= nums[i + 1]) {
+        --i;
+    }
+
+    if (i &lt; 0) {
+        reverse(nums.begin(), nums.end());
+        return;
+    }
+
+    int j = n - 1;
+    while (nums[j] &lt;= nums[i]) {
+        --j;
+    }
+
+    swap(nums[i], nums[j]);
+    reverse(nums.begin() + i + 1, nums.end());
+}
+  </pre>
+
+  <p><b>Dry Run</b></p>
+  <pre>Input: 1 3 5 4 2
+
+Pivot Search:
+    4 &gt; 2  → keep moving left
+    5 &gt; 4  → keep moving left
+    3 &lt; 5  → pivot = 3
+
+Rightmost Element Greater Than Pivot:
+    Scan from the end:
+      2 &lt;= 3
+      4 &gt; 3  → choose 4
+
+Swap:
+    1 4 5 3 2
+
+Reverse Suffix After Pivot:
+    Suffix = 5 3 2
+    Reverse suffix → 2 3 5
+
+Final Result:
+    1 4 2 3 5</pre>
+
+  <p><b>Extreme Edge Case Dry Run</b></p>
+  <pre>Input: 3 2 1
+
+Pivot Search:
+    2 &gt; 1
+    3 &gt; 2
+    No pivot found
+
+Action:
+    Reverse entire array
+
+Final Result:
+    1 2 3</pre>
+
+  <p><b>Why This Is Correct</b></p>
+  <p>
+    The first place from the right where the order can be increased is the pivot. Changing anything further left would create a bigger jump than necessary.
+    Among all larger choices for the pivot, the rightmost greater element in the suffix gives the smallest possible increase.
+    Finally, reversing the suffix makes it the smallest possible arrangement, which ensures the total result is the next lexicographic permutation and not just some larger one.
+  </p>
+
+  <p><b>Complexity Analysis</b></p>
+  <p>
+    <span class="label">Time Complexity:</span> O(n). The array is scanned from right to left to find the pivot, scanned again to find the swap candidate, and the suffix is reversed once. Each step is linear.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> O(1). The work is done in-place, using only a few variables.
+  </p>
+
+  <hr />
+  <p>
+    Source note: the response follows the uploaded problem-writing instructions provided in the user file. :contentReference[oaicite:0]{index=0}
+  </p>
+
+</body>
+</html>

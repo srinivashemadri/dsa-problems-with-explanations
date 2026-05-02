@@ -1,0 +1,209 @@
+<html>
+<head>
+  <title>LeetCode 53 - Maximum Subarray</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 22px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="title">LeetCode 53 — Maximum Subarray</div>
+
+<div class="section">Step 1 — Problem Statement</div>
+<p><b>Input:</b> An integer array <b>nums</b>, where each element may be positive, negative, or zero.</p>
+<p><b>Output:</b> Return the maximum possible sum of any non-empty contiguous subarray.</p>
+<p><b>Key Constraints:</b> The subarray must be continuous, and you must choose at least one element. That single rule is what changes the problem from “sum of any elements” to a true interval problem.</p>
+<p><b>Edge Cases:</b> all numbers negative, a single-element array, all numbers positive, mixed positive and negative values, zeros inside the array, and cases where the best subarray starts or ends at the boundary.</p>
+
+<hr>
+
+<div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+<p>This problem is really asking: among all contiguous segments of the array, which one has the largest sum?</p>
+<p>The core algorithmic challenge is deciding whether to extend the current segment or discard it and start fresh at the current index.</p>
+<p>This is a classic <b>dynamic programming / greedy</b> style problem.</p>
+<p>Mentally, you should see it like this: as you scan left to right, every position forces a decision — is the best subarray ending here built from the previous best ending here, or is the previous baggage so bad that you should restart here?</p>
+<p>The subtle trap is assuming that once the running sum becomes negative, you can still salvage it later. You usually cannot. A negative prefix only hurts future sums, so the optimal strategy is to drop it immediately.</p>
+
+<hr>
+
+<div class="section">Step 3 — Brute Force Solution</div>
+<p>The most naive idea is to try every possible subarray, compute its sum, and keep the maximum.</p>
+
+<pre>
+for i from 0 to n-1:
+    sum = 0
+    for j from i to n-1:
+        sum += nums[j]
+        ans = max(ans, sum)
+return ans
+</pre>
+
+<p>Each starting point <b>i</b> expands to the right and checks every ending point <b>j</b>. That covers all contiguous subarrays, but it repeats a lot of work.</p>
+<p><b>Time Complexity:</b> O(n²). There are O(n) starting points and for each one we may scan O(n) elements.</p>
+<p><b>Space Complexity:</b> O(1). We only store a few variables.</p>
+<p>The performance bottleneck is obvious: the same partial sums are recomputed again and again.</p>
+
+<hr>
+
+<div class="section">Step 4 — Intuition Building</div>
+
+<p><b>Test Case 1</b></p>
+<pre>
+Input: -2 1 -3 4 -1 2 1 -5 4
+    Negative prefixes keep hurting future sums
+    Best segment should be discovered by dropping bad baggage early
+Action: Keep a running sum, but restart whenever the running sum becomes harmful
+Result: 6, from subarray 4 -1 2 1
+</pre>
+
+<p><b>Test Case 2</b></p>
+<pre>
+Input: -5 -2 -8
+    Every number is negative
+    The maximum subarray is still required to be non-empty
+Action: Never return 0; pick the largest single element
+Result: -2
+</pre>
+
+<p><b>Test Case 3</b></p>
+<pre>
+Input: 1 2 3
+    Running sum keeps improving
+    No reason to restart
+Action: Extend the current subarray all the way
+Result: 6
+</pre>
+
+<p>The key insight emerges naturally: a subarray with a negative running sum can never help a future subarray become larger. If the current total is below zero, carrying it forward is worse than starting from the next element.</p>
+<p>The signal that should immediately make you think of this approach is: <b>“maximum sum of a contiguous segment”</b> with repeated decisions to either continue or restart.</p>
+
+<hr>
+
+<div class="section">Step 5 — Optimized Solution</div>
+<p>This problem has one fully optimal standard solution: <b>Kadane’s Algorithm</b>.</p>
+
+<p>The idea is simple: at every position, maintain the best subarray sum ending exactly at that position. That value is either the current element alone, or the current element plus the best ending at the previous position.</p>
+
+<p><b>Pseudocode:</b></p>
+<pre>
+bestEndingHere = nums[0]
+bestSoFar = nums[0]
+
+for each element nums[i] from index 1 to end:
+    bestEndingHere = max(nums[i], bestEndingHere + nums[i])
+    bestSoFar = max(bestSoFar, bestEndingHere)
+
+return bestSoFar
+</pre>
+
+<p><b>Why this works:</b> if the best sum ending at the previous index is negative, extending it only makes the current sum worse. So the algorithm chooses between starting fresh at the current element or extending the previous segment.</p>
+
+<p><b>Dry Run:</b></p>
+<pre>
+Input: -2 1 -3 4 -1 2 1 -5 4
+
+Initialize:
+bestEndingHere = -2
+bestSoFar      = -2
+
+Index 1, value = 1
+Pivot decision: max(1, -2 + 1) = 1
+bestEndingHere = 1
+bestSoFar = 1
+
+Index 2, value = -3
+Pivot decision: max(-3, 1 + -3) = -2
+bestEndingHere = -2
+bestSoFar = 1
+
+Index 3, value = 4
+Pivot decision: max(4, -2 + 4) = 4
+bestEndingHere = 4
+bestSoFar = 4
+
+Index 4, value = -1
+Pivot decision: max(-1, 4 + -1) = 3
+bestEndingHere = 3
+bestSoFar = 4
+
+Index 5, value = 2
+Pivot decision: max(2, 3 + 2) = 5
+bestEndingHere = 5
+bestSoFar = 5
+
+Index 6, value = 1
+Pivot decision: max(1, 5 + 1) = 6
+bestEndingHere = 6
+bestSoFar = 6
+
+Index 7, value = -5
+Pivot decision: max(-5, 6 + -5) = 1
+bestEndingHere = 1
+bestSoFar = 6
+
+Index 8, value = 4
+Pivot decision: max(4, 1 + 4) = 5
+bestEndingHere = 5
+bestSoFar = 6
+
+Final Result: 6
+</pre>
+
+<p><b>Edge Case Handling:</b> for an all-negative array like <code>-5 -2 -8</code>, initialization with the first element is essential. It ensures the answer is the largest negative number rather than incorrectly returning 0.</p>
+
+<p><b>Time Complexity:</b> O(n). We scan the array once, and each step does constant work.</p>
+<p><b>Space Complexity:</b> O(1). Only two variables are maintained.</p>
+<p><b>Algorithm Name:</b> Kadane’s Algorithm.</p>
+
+<hr>
+
+<div class="section">Step 6 — C++ Code</div>
+<pre>
+int maxSubArray(vector&lt;int&gt;&amp; nums) {
+    int bestEndingHere = nums[0];
+    int bestSoFar = nums[0];
+
+    for (int i = 1; i &lt; (int)nums.size(); ++i) {
+        bestEndingHere = max(nums[i], bestEndingHere + nums[i]);
+        bestSoFar = max(bestSoFar, bestEndingHere);
+    }
+
+    return bestSoFar;
+}
+</pre>
+
+</body>
+</html>

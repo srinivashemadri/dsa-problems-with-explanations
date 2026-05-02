@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 88 - Merge Sorted Array</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 22px;
+    }
+    h2 {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 10px 0;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 14px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #000;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="title">LeetCode 88 — Merge Sorted Array</div>
+
+  <h2>Step 1 — Problem Statement</h2>
+  <p>
+    <span class="label">Input:</span> Two sorted integer arrays are given, where the first array <b>nums1</b> has size <b>m + n</b>. The first <b>m</b> elements of <b>nums1</b> are valid, and the last <b>n</b> positions are empty space meant to hold the merged result. The second array <b>nums2</b> has size <b>n</b>.
+  </p>
+  <p>
+    <span class="label">Output:</span> Merge both sorted arrays into <b>nums1</b> in non-decreasing order, in-place.
+  </p>
+  <p>
+    <span class="label">Key Constraints:</span> Both arrays are already sorted. The result must be stored inside <b>nums1</b>. You should not return a new array. The extra space should be constant if possible.
+  </p>
+  <p>
+    <span class="label">Edge Cases:</span> <b>m = 0</b> means nums1 starts empty and should become a copy of nums2. <b>n = 0</b> means nums2 is empty and nums1 should remain unchanged. Duplicate values must be preserved correctly. Negative numbers are valid if present. If one array is fully smaller than the other, the merge should still be correct without special branching.
+  </p>
+
+  <hr />
+
+  <h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+  <p>
+    This problem is really asking you to combine two already-sorted sequences into one sorted sequence without using a separate result array.
+  </p>
+  <p>
+    The core algorithmic challenge is that nums1 has extra space, so we must avoid overwriting useful values before they are compared.
+  </p>
+  <p>
+    <span class="label">Category:</span> Two pointers / In-place merge / Array manipulation.
+  </p>
+  <p>
+    <span class="label">Mental model:</span> Think of two sorted stacks of numbers and place the largest remaining number at the end of nums1 first. That way, you never destroy unread data.
+  </p>
+  <p>
+    <span class="label">Subtle trap:</span> Many candidates try to merge from the front, which overwrites values in nums1 before they are used. The safe direction is from the back.
+  </p>
+
+  <hr />
+
+  <h2>Step 3 — Brute Force Solution</h2>
+  <p>
+    The naive way is to create a temporary array, merge both sorted arrays into it with two pointers, and then copy the result back into nums1.
+  </p>
+
+  <pre>pseudocode:
+
+create temp array
+set i = 0, j = 0
+
+while i &lt; m and j &lt; n:
+    if nums1[i] &lt;= nums2[j]:
+        append nums1[i] to temp
+        i++
+    else:
+        append nums2[j] to temp
+        j++
+
+append remaining elements from nums1
+append remaining elements from nums2
+
+copy temp back into nums1</pre>
+
+  <p>
+    <span class="label">Time Complexity:</span> O(m + n) because each element is processed once during the merge and once during the copy-back step.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> O(m + n) because of the extra temporary array.
+  </p>
+  <p>
+    <span class="label">Bottleneck:</span> The extra memory usage. The problem specifically invites an in-place solution, so this approach is not optimal for interviews.
+  </p>
+
+  <hr />
+
+  <h2>Step 4 — Intuition Building</h2>
+
+  <h3>Test Case 1</h3>
+  <p><span class="label">Input:</span> nums1 = [1, 2, 3, 0, 0, 0], m = 3; nums2 = [2, 5, 6], n = 3</p>
+  <p>
+    The useful part of nums1 is already sorted. nums2 is also sorted. If we merge from the front, nums1[0] = 1 may get overwritten too early.
+  </p>
+  <p><span class="label">Action:</span> Compare from the back, choose the larger value each time, and place it at the last free position of nums1.</p>
+  <p><span class="label">Result:</span> [1, 2, 2, 3, 5, 6]</p>
+
+  <h3>Test Case 2</h3>
+  <p><span class="label">Input:</span> nums1 = [4, 5, 6, 0, 0, 0], m = 3; nums2 = [1, 2, 3], n = 3</p>
+  <p>
+    Every element in nums1 is already larger than every element in nums2. If we merged from the front, we would keep shifting nums1 repeatedly. From the back, the answer becomes easy: keep placing nums1 values first.
+  </p>
+  <p><span class="label">Action:</span> Fill nums1 from the end with 6, 5, 4, then copy 3, 2, 1.</p>
+  <p><span class="label">Result:</span> [1, 2, 3, 4, 5, 6]</p>
+
+  <h3>Test Case 3 (Edge Case)</h3>
+  <p><span class="label">Input:</span> nums1 = [0, 0, 0], m = 0; nums2 = [2, 5, 6], n = 3</p>
+  <p>
+    There are no valid elements in nums1. A front-based merge would still work with extra code, but the backward method handles it naturally.
+  </p>
+  <p><span class="label">Action:</span> Since nums1 has no valid values, copy nums2 directly into nums1 from the back.</p>
+  <p><span class="label">Result:</span> [2, 5, 6]</p>
+
+  <p>
+    The key pattern is clear now: when one array has empty space at the end, and both arrays are sorted, think <b>merge from the back</b>. That signal should immediately trigger the two-pointer backward strategy.
+  </p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution</h2>
+  <p>
+    There is only one meaningful optimized solution here: the backward two-pointer merge. It is already optimal in both time and space for this problem.
+  </p>
+
+  <p>
+    <span class="label">Idea:</span> Use three pointers — one at the end of the valid part of nums1, one at the end of nums2, and one at the last index of nums1. Repeatedly place the larger of the two pointed values into the current back position of nums1.
+  </p>
+
+  <pre>pseudocode:
+
+i = m - 1
+j = n - 1
+k = m + n - 1
+
+while i &gt;= 0 and j &gt;= 0:
+    if nums1[i] &gt; nums2[j]:
+        nums1[k] = nums1[i]
+        i--
+    else:
+        nums1[k] = nums2[j]
+        j--
+    k--
+
+while j &gt;= 0:
+    nums1[k] = nums2[j]
+    j--
+    k--</pre>
+
+  <p>
+    <span class="label">Why this works:</span> The largest remaining element among the two sorted arrays must belong at the end of the final merged array. By filling from the back, we preserve all unread elements in nums1.
+  </p>
+
+  <p>
+    <span class="label">Full Working C++17 Code:</span>
+  </p>
+
+  <pre>void merge(vector&lt;int&gt;&amp; nums1, int m, vector&lt;int&gt;&amp; nums2, int n) {
+    int i = m - 1;
+    int j = n - 1;
+    int k = m + n - 1;
+
+    while (i &gt;= 0 &amp;&amp; j &gt;= 0) {
+        if (nums1[i] &gt; nums2[j]) {
+            nums1[k] = nums1[i];
+            i--;
+        } else {
+            nums1[k] = nums2[j];
+            j--;
+        }
+        k--;
+    }
+
+    while (j &gt;= 0) {
+        nums1[k] = nums2[j];
+        j--;
+        k--;
+    }
+}</pre>
+
+  <h3>Dry Run on Test Case 1</h3>
+  <p><span class="label">Input:</span> nums1 = [1, 2, 3, 0, 0, 0], nums2 = [2, 5, 6]</p>
+
+  <p><span class="label">Initial State:</span></p>
+  <pre>i = 2  -&gt; 3
+j = 2  -&gt; 6
+k = 5  -&gt; last position</pre>
+
+  <p><span class="label">Step 1:</span> Compare nums1[i] = 3 and nums2[j] = 6</p>
+  <pre>Pivot decision: 6 is larger
+Place 6 at nums1[5]
+Array: [1, 2, 3, 0, 0, 6]</pre>
+
+  <p><span class="label">Step 2:</span> Compare nums1[i] = 3 and nums2[j] = 5</p>
+  <pre>Place 5 at nums1[4]
+Array: [1, 2, 3, 0, 5, 6]</pre>
+
+  <p><span class="label">Step 3:</span> Compare nums1[i] = 3 and nums2[j] = 2</p>
+  <pre>Place 3 at nums1[3]
+Array: [1, 2, 3, 3, 5, 6]</pre>
+
+  <p><span class="label">Step 4:</span> Compare nums1[i] = 2 and nums2[j] = 2</p>
+  <pre>Place 2 from nums2 at nums1[2]
+Array: [1, 2, 2, 3, 5, 6]</pre>
+
+  <p><span class="label">Step 5:</span> nums2 is exhausted, stop</p>
+  <pre>Final Result: [1, 2, 2, 3, 5, 6]</pre>
+
+  <p>
+    <span class="label">Edge Case Handling:</span> If nums2 is empty, the main loop never runs and nums1 stays unchanged. If nums1 has no valid elements, the leftover nums2 values are copied directly into nums1. Duplicates are preserved because the comparison always places one valid element at a time.
+  </p>
+
+  <p>
+    <span class="label">Time Complexity:</span> O(m + n). Each pointer moves only left, so each element is touched at most once.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> O(1). The merge happens in-place using only a few integer variables.
+  </p>
+  <p>
+    <span class="label">Algorithm Name:</span> Backward Two-Pointer Merge.
+  </p>
+
+</body>
+</html>

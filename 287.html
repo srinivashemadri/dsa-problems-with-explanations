@@ -1,0 +1,244 @@
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 287 — Find the Duplicate Number</title>
+</head>
+<body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.8; max-width: 760px; margin: 40px auto; color: #000;">
+  <div style="text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 18px;">
+    LeetCode 287 — Find the Duplicate Number
+  </div>
+
+  <p>
+    Following the uploaded workflow instructions for this response. :contentReference[oaicite:0]{index=0}
+  </p>
+
+  <hr />
+
+  <h2 style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 1 — Problem Statement</h2>
+
+  <p>
+    <b>Input:</b> An integer array <b>nums</b> of length <b>n + 1</b>, where every value is in the range <b>1..n</b>. Exactly one number is duplicated, but that duplicate may appear more than twice.
+  </p>
+  <p>
+    <b>Output:</b> Return the duplicated number without modifying the array.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The values are tightly bounded to <b>1..n</b>, while the array has <b>n + 1</b> elements. That mismatch is the core signal: by the pigeonhole principle, at least one value must repeat. The classic follow-up constraint for this problem is to use only <b>O(1)</b> extra space and less than <b>O(n^2)</b> time.
+  </p>
+  <p>
+    <b>Edge Cases:</b>
+  </p>
+  <ul style="margin-top: 0;">
+    <li>Minimum valid input such as <b>[1, 1]</b>.</li>
+    <li>Duplicate appears at the beginning, middle, or end.</li>
+    <li>Duplicate appears more than twice, such as <b>[2, 2, 2, 2]</b> when valid under the range.</li>
+    <li>The array is already in a pattern that makes the duplicate appear immediately or only after a long chain.</li>
+    <li>You must not assume the duplicate is exactly twice; the same value can repeat many times.</li>
+  </ul>
+
+  <hr />
+
+  <h2 style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 2 — Problem Understanding &amp; Approach Overview</h2>
+
+  <p>
+    This problem is really asking: <b>find the repeated value in a constrained array without using the normal “sort and compare” shortcut and without extra memory.</b>
+  </p>
+  <p>
+    The core challenge is that the array is not just a list of numbers; because every value points to another valid index-like position, it can be treated as a <b>functional graph</b> with a guaranteed cycle.
+  </p>
+  <p>
+    <b>Category:</b> Array + Pigeonhole Principle + Cycle Detection.
+  </p>
+  <p>
+    <b>Mental model:</b> Think of each value as a pointer to the next index. The duplicate value creates a merge in that pointer structure, and a merge in a functional graph necessarily produces a cycle. Once you see that, the problem becomes a cycle-entry problem.
+  </p>
+  <p>
+    <b>Subtle trap:</b> Many candidates try to sort the array, mark values by negation, or use extra hash space immediately. Those approaches either violate the follow-up constraints or miss the deeper invariant: the duplicate is the <i>entrance to a cycle</i>.
+  </p>
+
+  <hr />
+
+  <h2 style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 3 — Brute Force Solution</h2>
+
+  <p>
+    The most naive solution is to compare every element with every other element until you find a match.
+  </p>
+
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+For i from 0 to n:
+    For j from i + 1 to n:
+        If nums[i] == nums[j]:
+            return nums[i]
+  </pre>
+
+  <p>
+    <b>Why it works:</b> If a number is duplicated, eventually some pair of equal values will be compared.
+  </p>
+  <p>
+    <b>Time Complexity:</b> <b>O(n^2)</b> — the outer loop runs roughly <b>n</b> times and the inner loop also runs up to <b>n</b> times.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <b>O(1)</b> — no extra data structure is used.
+  </p>
+  <p>
+    <b>Performance bottleneck:</b> Rechecking already-seen values repeatedly. The same comparisons are done many times, which becomes too slow for large inputs.
+  </p>
+
+  <hr />
+
+  <h2 style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 4 — Intuition Building</h2>
+
+  <h3 style="font-size: 13pt; font-weight: bold;">Test Case 1</h3>
+  <p style="margin-top: 0;">
+    Input: <b>1 3 4 2 2</b><br />
+    &nbsp;&nbsp;&nbsp;&nbsp;The values stay inside <b>1..4</b><br />
+    &nbsp;&nbsp;&nbsp;&nbsp;The duplicate is <b>2</b>
+    <br />
+    Action: If we scan with extra memory, we would detect <b>2</b> when it appears the second time.
+    <br />
+    Result: <b>2</b>
+  </p>
+  <p>
+    This is easy with a set, but it does not yet explain the deeper structure. The important observation is that values can be followed like links.
+  </p>
+
+  <h3 style="font-size: 13pt; font-weight: bold;">Test Case 2</h3>
+  <p style="margin-top: 0;">
+    Input: <b>3 1 3 4 2</b><br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Start at index 0 and follow values as next hops<br />
+    &nbsp;&nbsp;&nbsp;&nbsp;3 → 4 → 2 → 3<br />
+    &nbsp;&nbsp;&nbsp;&nbsp;A cycle appears, and the duplicate value is where paths merge
+    <br />
+    Action: Notice that two different paths can arrive at the same value.
+    <br />
+    Result: The repeated value is <b>3</b>
+  </p>
+  <p>
+    This is the key pattern: once two paths enter the same node, a cycle becomes inevitable. The duplicate is not just “a repeated number”; it is the entry point of the cycle.
+  </p>
+
+  <h3 style="font-size: 13pt; font-weight: bold;">Test Case 3 (Edge Case)</h3>
+  <p style="margin-top: 0;">
+    Input: <b>1 1</b><br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Minimum valid size<br />
+    &nbsp;&nbsp;&nbsp;&nbsp;The duplicate is visible immediately<br />
+    Action: Any correct O(1)-space solution must still handle this without special casing.
+    <br />
+    Result: <b>1</b>
+  </p>
+  <p>
+    A weak solution sometimes assumes the cycle must be long. That is false. The optimal approach must also work when the meeting point happens almost instantly.
+  </p>
+  <p>
+    <b>What signal should make you think of this approach in a future problem?</b> When an array of bounded values can be interpreted as “next pointers,” and the problem guarantees one extra element or one guaranteed repetition, think <b>cycle detection</b>.
+  </p>
+
+  <hr />
+
+  <h2 style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 5 — Optimized Solution</h2>
+
+  <p>
+    This problem has <b>two distinct optimization levels</b>:
+  </p>
+  <p>
+    First, you can reduce the brute force cost by storing seen values in a hash set. Then, you can go one step further and eliminate extra space entirely by using Floyd’s cycle detection.
+  </p>
+
+  <h3 style="font-size: 13pt; font-weight: bold;">Optimized Solution 1 (Intermediate) — Hash Set</h3>
+
+  <p>
+    <b>Idea:</b> Store each seen number. The first number that already exists in the set is the duplicate.
+  </p>
+
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+Create an empty set
+For each number x in nums:
+    If x is already in set:
+        return x
+    Insert x into set
+  </pre>
+
+  <p>
+    <b>Time Complexity:</b> <b>O(n)</b> — each element is inserted and checked once on average.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <b>O(n)</b> — the set may store almost all elements before the duplicate is found.
+  </p>
+  <p>
+    <b>What was eliminated:</b> The repeated pairwise comparisons from brute force.
+  </p>
+
+  <h3 style="font-size: 13pt; font-weight: bold;">Optimized Solution 2 (Best Known / Fully Optimal) — Floyd’s Cycle Detection</h3>
+
+  <p>
+    <b>Further insight:</b> Because every value is in <b>1..n</b>, you can treat <b>nums[i]</b> as a pointer to the next node. Starting from <b>nums[0]</b>, you move through the graph until you enter the cycle. The duplicate number is the cycle entrance.
+  </p>
+
+  <p>
+    <b>Algorithm name:</b> Floyd’s Tortoise and Hare.
+  </p>
+
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+int findDuplicate(vector&lt;int&gt;&amp; nums) {
+    int slow = nums[0];
+    int fast = nums[0];
+
+    do {
+        slow = nums[slow];
+        fast = nums[nums[fast]];
+    } while (slow != fast);
+
+    slow = nums[0];
+    while (slow != fast) {
+        slow = nums[slow];
+        fast = nums[fast];
+    }
+
+    return slow;
+}
+  </pre>
+
+  <p>
+    <b>Dry Run on 1 3 4 2 2</b>
+  </p>
+
+  <p style="margin-top: 0;">
+    <b>Phase 1 — Find meeting point</b><br />
+    Start: slow = <b>1</b>, fast = <b>1</b><br />
+    Step 1: slow = nums[1] = <b>3</b>, fast = nums[nums[1]] = nums[3] = <b>2</b><br />
+    Step 2: slow = nums[3] = <b>2</b>, fast = nums[nums[2]] = nums[4] = <b>2</b><br />
+    Meeting point found at <b>2</b>
+  </p>
+
+  <p style="margin-top: 0;">
+    <b>Phase 2 — Find cycle entrance</b><br />
+    Reset slow = <b>1</b>, keep fast = <b>2</b><br />
+    Step 1: slow = nums[1] = <b>3</b>, fast = nums[2] = <b>4</b><br />
+    Step 2: slow = nums[3] = <b>2</b>, fast = nums[4] = <b>2</b><br />
+    Both meet at <b>2</b>
+    <br />
+    Final Result: <b>2</b>
+  </p>
+
+  <p>
+    <b>How this handles the edge case [1, 1]:</b><br />
+    slow = 1, fast = 1 immediately meets in phase 1.<br />
+    After reset, slow remains 1 and fast remains 1, so the entrance is returned correctly without any special handling.
+  </p>
+
+  <p>
+    <b>Time Complexity:</b> <b>O(n)</b>. The tortoise and hare each move through at most a constant number of passes over the implicit graph. Phase 1 takes linear time to reach the cycle and detect a meeting point. Phase 2 also takes linear time in the worst case to reach the cycle entrance.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <b>O(1)</b>. Only two pointers are used, regardless of input size.
+  </p>
+
+  <hr />
+
+  <h2 style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Final Interview Takeaway</h2>
+
+  <p>
+    The fastest way to recognize this problem is to notice that the value range is restricted to <b>1..n</b> while the array has <b>n + 1</b> elements. That mismatch guarantees a duplicate. Once you reinterpret values as pointers, the duplicate becomes a <b>cycle entrance</b>, and Floyd’s algorithm gives the clean O(n) time, O(1) space answer.
+  </p>
+</body>
+</html>

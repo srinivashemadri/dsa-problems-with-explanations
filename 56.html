@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 56 — Merge Intervals</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 8px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 14px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #000;
+      margin: 22px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 56 — Merge Intervals</div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <span class="label">Input:</span> a list of intervals, where each interval is written as <b>[start, end]</b>. The intervals are not guaranteed to be sorted, and they may overlap or even just touch at endpoints.
+  </p>
+  <p>
+    <span class="label">Output:</span> a new list of intervals after merging every overlapping or touching interval into the smallest possible set of disjoint intervals.
+  </p>
+  <p>
+    <span class="label">Key Constraints:</span> the relative order of the original input does not matter, so sorting is allowed; two intervals should be merged whenever the next interval starts at or before the current merged interval ends; the final answer must contain non-overlapping intervals only.
+  </p>
+  <p>
+    <span class="label">Edge Cases:</span> empty input, one interval, already disjoint intervals, fully nested intervals, touching intervals like <b>[1,4]</b> and <b>[4,5]</b>, completely overlapping intervals, and intervals given in unsorted order.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    This problem is really asking for the union of many closed intervals. The story is just a disguise; the core challenge is deciding, after ordering intervals by start time, when the current interval should extend the previous merged range and when it should begin a new one.
+  </p>
+  <p>
+    The category is <b>sorting + greedy interval processing</b>. The mental model is simple: after sorting, walk left to right while maintaining one “active merged interval.” Every new interval either stretches that active interval or becomes the next separate block.
+  </p>
+  <p>
+    The subtle trap is forgetting that <b>touching endpoints must merge</b> in this problem, so the condition is not just “start &lt; end” but effectively <b>start &le; currentEnd</b>. Another common mistake is trying to merge without sorting first.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    A naive way is to repeatedly compare every interval with every other interval, merge any pair that overlaps, and keep repeating until no more merges happen.
+  </p>
+
+  <pre>Brute Force Pseudocode:
+
+repeat
+    mergedSomething = false
+    for each interval i
+        for each interval j after i
+            if i and j overlap
+                merge them into one interval
+                remove the old two intervals
+                mergedSomething = true
+                break and restart scanning
+until mergedSomething is false
+
+return the final list</pre>
+
+  <p>
+    The reason this is slow is that every merge can force another full scan. In the worst case, many intervals keep collapsing one step at a time.
+  </p>
+  <p>
+    <span class="label">Time Complexity:</span> O(n<sup>2</sup>) to O(n<sup>3</sup>) depending on how the deletions and rescans are implemented. The bottleneck is repeated pairwise checking and repeated restarting.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> O(1) extra space if done in place, aside from storage for the output structure.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p><b>Test Case 1</b></p>
+  <pre>Input: 1 3, 2 6, 8 10, 15 18
+    Unsorted? not needed for the intuition yet, but sorting by start keeps intervals in order
+    Active interval starts as [1,3]
+    Next interval [2,6] overlaps because 2 &le; 3
+Action: extend active interval to [1,6]
+Result so far: [1,6]</pre>
+
+  <pre>Next interval: [8,10]
+    No overlap because 8 &gt; 6
+Action: close [1,6] and start a new active interval [8,10]
+Result so far: [1,6], [8,10]</pre>
+
+  <pre>Next interval: [15,18]
+    No overlap again because 15 &gt; 10
+Action: close [8,10] and start [15,18]
+Final Result: [1,6], [8,10], [15,18]</pre>
+
+  <p>
+    The key insight here is that once intervals are sorted, you never need to look backward beyond the last merged interval. That eliminates the repeated global rescanning from brute force.
+  </p>
+
+  <p><b>Test Case 2</b></p>
+  <pre>Input: 1 4, 4 5
+    These intervals touch exactly at 4
+    Since the intervals are closed, touching means they belong together
+Action: merge them into one interval
+Result: [1,5]</pre>
+
+  <p>
+    This is the edge case many people miss. If you use a strict comparison and treat only true overlap as mergeable, you will incorrectly keep these separate.
+  </p>
+
+  <p><b>Test Case 3 (Edge Case)</b></p>
+  <pre>Input: 3 2, 1 4, 2 3
+    First sort them by start:
+    [1,4], [2,3], [3,2] is not valid input format for intervals, so think of the real edge case as unsorted valid intervals like [5,7], [1,2], [2,4]
+    After sorting: [1,2], [2,4], [5,7]
+    Active interval [1,2]
+    Next interval [2,4] touches at 2
+Action: merge into [1,4]
+    Next interval [5,7] does not overlap
+Action: start a new block
+Result: [1,4], [5,7]</pre>
+
+  <p>
+    The signal that should make you think of this approach immediately is: <b>“intervals,” “merge,” “overlap,” “minimum number of disjoint ranges,” or “union of ranges.”</b> Whenever the task is to compress overlapping ranges, sort first and sweep once.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    This problem has one best practical solution: <b>sort by start time and then do a single linear pass</b>. That is the standard optimal approach.
+  </p>
+
+  <p><b>Idea:</b> sort the intervals by their starting point. Keep one result list. For each new interval, compare it with the last merged interval. If they overlap or touch, extend the last merged interval. Otherwise, append the new one.
+  </p>
+
+  <pre>Optimized Pseudocode:
+
+if intervals is empty:
+    return empty list
+
+sort intervals by start
+result = [first interval]
+
+for each interval from the second onward:
+    if current.start &le; result.last.end:
+        result.last.end = max(result.last.end, current.end)
+    else:
+        append current to result
+
+return result</pre>
+
+  <pre>Interview-Ready C++17 Code:
+
+vector<vector<int>> merge(vector<vector<int>>& intervals) {
+    if (intervals.empty()) return {};
+
+    sort(intervals.begin(), intervals.end());
+
+    vector<vector<int>> merged;
+    merged.push_back(intervals[0]);
+
+    for (int i = 1; i < (int)intervals.size(); ++i) {
+        if (intervals[i][0] <= merged.back()[1]) {
+            merged.back()[1] = max(merged.back()[1], intervals[i][1]);
+        } else {
+            merged.push_back(intervals[i]);
+        }
+    }
+
+    return merged;
+}</pre>
+
+  <p><b>Dry Run:</b></p>
+  <pre>Input: [1,3], [2,6], [8,10], [15,18]
+
+Sort: already sorted
+
+Initialize:
+merged = [ [1,3] ]
+
+Step 1: current = [2,6]
+Pivot check: 2 &le; 3
+Action: merge
+Update merged.back() to [1,6]
+merged = [ [1,6] ]
+
+Step 2: current = [8,10]
+Pivot check: 8 &gt; 6
+Action: append as a new interval
+merged = [ [1,6], [8,10] ]
+
+Step 3: current = [15,18]
+Pivot check: 15 &gt; 10
+Action: append as a new interval
+Final Result = [ [1,6], [8,10], [15,18] ]</pre>
+
+  <p>
+    <span class="label">Time Complexity:</span> O(n log n) because sorting dominates. The scan itself is O(n), so the total is O(n log n).
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> O(1) extra space if the sort is done in place, excluding the output list. If the sorting implementation uses extra stack space internally, that is implementation-dependent.
+  </p>
+  <p>
+    <span class="label">Algorithm Name:</span> sort + sweep / greedy interval merging.
+  </p>
+
+</body>
+</html>
