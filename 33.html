@@ -1,0 +1,192 @@
+<html>
+  <body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.8; max-width: 760px; margin: 40px auto; color: #000;">
+    <div style="text-align: center; font-size: 14pt; font-weight: bold;">LeetCode 33 — Search in Rotated Sorted Array</div>
+
+    <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">1. Problem Statement</div>
+    <p>
+      <b>Input:</b> An integer array <b>nums</b> that was originally sorted in strictly increasing order, then rotated at an unknown pivot, and an integer <b>target</b>.
+      Your task is to determine the index of <b>target</b> in <b>nums</b>.
+    </p>
+    <p>
+      <b>Output:</b> Return the index of <b>target</b> if it exists; otherwise return <b>-1</b>.
+    </p>
+    <p>
+      <b>Key Constraints:</b> The array has no duplicates in the standard version of this problem, which is the detail that makes the binary-search logic clean. The array is rotated, but both halves around the pivot remain individually sorted.
+    </p>
+    <p>
+      <b>Edge Cases:</b> empty array, single element, target absent, target at the pivot, no rotation at all, full rotation equivalent to no rotation, and arrays where the target lies in the left sorted half or the right sorted half.
+    </p>
+
+    <hr />
+
+    <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">2. Problem Understanding &amp; Approach Overview</div>
+    <p>
+      This problem is really asking: <b>how do we do binary search when the array is not fully sorted globally, but is still partially sorted because of rotation?</b>
+    </p>
+    <p>
+      The core challenge is identifying, at every step, <b>which half is sorted</b> and then deciding whether the target can only live inside that half.
+    </p>
+    <p>
+      <b>Category:</b> Modified binary search.
+    </p>
+    <p>
+      <b>Mental model:</b> Picture the rotated array as two sorted blocks stitched together. One of the two halves around the midpoint is always sorted. Once you know which half is sorted, you can check whether the target belongs there and discard the other half.
+    </p>
+    <p>
+      <b>Common trap:</b> Many candidates try to “find the pivot first” and then do a second binary search. That works, but the cleaner interview solution is a single-pass modified binary search that directly narrows the range.
+    </p>
+
+    <hr />
+
+    <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">3. Brute Force Solution</div>
+    <p>
+      The naive approach is to scan the array linearly and compare every element with the target.
+    </p>
+    <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+for i from 0 to n - 1:
+    if nums[i] == target:
+        return i
+return -1
+    </pre>
+    <p>
+      <b>Time Complexity:</b> O(n). We may inspect every element once.
+    </p>
+    <p>
+      <b>Space Complexity:</b> O(1). No extra data structure is needed.
+    </p>
+    <p>
+      <b>Bottleneck:</b> The search does not exploit the sorted structure, so it wastes the main advantage the problem gives us.
+    </p>
+
+    <hr />
+
+    <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">4. Intuition Building</div>
+
+    <div style="font-weight: bold; margin-top: 16px;">Test Case 1</div>
+    <p>
+      <b>Input:</b> nums = 4 5 6 7 0 1 2, target = 0
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Mid starts near 7
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Left half 4 5 6 7 is sorted
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Target 0 is not in [4, 7]
+      <br />
+      <b>Action:</b> Discard left half and search right half.
+      <br />
+      <b>Result:</b> Eventually land on index 4.
+    </p>
+
+    <div style="font-weight: bold; margin-top: 16px;">Test Case 2</div>
+    <p>
+      <b>Input:</b> nums = 4 5 6 7 0 1 2, target = 6
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Mid may be 7 initially
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Left half 4 5 6 7 is sorted
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Target 6 lies inside [4, 7]
+      <br />
+      <b>Action:</b> Discard right half and keep searching left half.
+      <br />
+      <b>Result:</b> Eventually land on index 2.
+    </p>
+
+    <div style="font-weight: bold; margin-top: 16px;">Test Case 3 (Edge Case)</div>
+    <p>
+      <b>Input:</b> nums = 1, target = 1
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Single element, both bounds and mid are the same
+      <br />
+      <b>Action:</b> Direct comparison succeeds immediately.
+      <br />
+      <b>Result:</b> Return 0.
+    </p>
+
+    <p>
+      The important discovery is this: even though the whole array is not sorted, <b>one side around mid is always sorted</b>. That is enough to make binary search work. The signal that should immediately make you think of this approach is: <b>“sorted array, but rotated once, with unique values.”</b>
+    </p>
+
+    <hr />
+
+    <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">5. Optimized Solution</div>
+    <p>
+      There is one optimal solution here: a single modified binary search. At each step, detect the sorted half, then decide whether the target belongs there.
+    </p>
+
+    <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+int search(vector&lt;int&gt;&amp; nums, int target) {
+    int left = 0, right = (int)nums.size() - 1;
+
+    while (left &lt;= right) {
+        int mid = left + (right - left) / 2;
+
+        if (nums[mid] == target) return mid;
+
+        // Left half is sorted
+        if (nums[left] &lt;= nums[mid]) {
+            if (nums[left] &lt;= target &amp;&amp; target &lt; nums[mid]) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
+        }
+        // Right half is sorted
+        else {
+            if (nums[mid] &lt; target &amp;&amp; target &lt;= nums[right]) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+    }
+
+    return -1;
+}
+    </pre>
+
+    <p>
+      <b>Dry Run:</b>
+    </p>
+    <p>
+      <b>Input:</b> nums = 4 5 6 7 0 1 2, target = 0
+      <br />
+      <b>Step 1:</b> left = 0, right = 6, mid = 3, nums[mid] = 7
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Left half 4 5 6 7 is sorted
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Target 0 is not in [4, 7)
+      <br />
+      <b>Action:</b> left = mid + 1 = 4
+      <br />
+      <b>Step 2:</b> left = 4, right = 6, mid = 5, nums[mid] = 1
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Left half 0 1 is sorted
+      <br />
+      &nbsp;&nbsp;&nbsp;&nbsp;Target 0 is in [0, 1)
+      <br />
+      <b>Action:</b> right = mid - 1 = 4
+      <br />
+      <b>Step 3:</b> left = 4, right = 4, mid = 4, nums[mid] = 0
+      <br />
+      <b>Final Result:</b> return 4
+    </p>
+
+    <p>
+      <b>Extreme Edge Case Handling:</b> If the array is not rotated at all, the left half is always sorted and the logic behaves exactly like normal binary search. If the target is absent, the search space keeps shrinking until <b>left &gt; right</b>, and then we return <b>-1</b>.
+    </p>
+
+    <p>
+      <b>Time Complexity:</b> O(log n). Each iteration discards half of the remaining search space.
+    </p>
+    <p>
+      <b>Space Complexity:</b> O(1). The algorithm uses only a few pointers.
+    </p>
+    <p>
+      <b>Algorithm Name:</b> Modified Binary Search.
+    </p>
+
+    <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Reference</div>
+    <p>LeetCode 33 search-in-rotated-sorted-array solution format prepared from the user-provided prompt. :contentReference[oaicite:0]{index=0}</p>
+  </body>
+</html>

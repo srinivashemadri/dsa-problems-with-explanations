@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 162 — Find Peak Element</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      margin-top: 28px;
+      font-size: 14pt;
+      font-weight: bold;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 162 — Find Peak Element</div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> An integer array <b>nums</b>. A peak element is an index <b>i</b> such that
+    <b>nums[i] &gt; nums[i - 1]</b> and <b>nums[i] &gt; nums[i + 1]</b>, where the virtual elements
+    outside the array are treated as <b>-∞</b>. The array is guaranteed to have at least one peak.
+  </p>
+  <p>
+    <b>Output:</b> Return <i>any</i> peak index.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The array has at least one element. Adjacent elements are not equal in the classic problem setting, which is important because it lets us reason about a strict rising or falling slope. The answer does not need to be the leftmost or rightmost peak; any valid peak is acceptable.
+  </p>
+  <p>
+    <b>Edge Cases:</b> A single-element array, a strictly increasing array, a strictly decreasing array, multiple peaks, and peaks near the boundaries. The boundary rule with virtual <b>-∞</b> matters: the first or last element can be a peak.
+  </p>
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    Strip away the story: this is really asking for a <b>local maximum</b> in an array where you are allowed to return any one of them. The core challenge is to do better than scanning every element one by one.
+  </p>
+  <p>
+    This is a <b>binary search on structure</b> problem. The mental model is not “find the biggest number”; it is “find a place where the slope changes from rising to falling.” If the middle is rising to the right, then a peak must exist on the right side. If the middle is falling to the right, then a peak must exist on the left side including the middle.
+  </p>
+  <p>
+    The subtle trap is to check both neighbors for every index and stop at the first peak. That works, but it wastes the structure of the array and costs <b>O(n)</b>. Another common mistake is to move the binary search boundary incorrectly by using <b>mid - 1</b> or <b>mid + 1</b> without preserving the guarantee that a peak still exists in the remaining range.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The naive idea is simple: inspect every index and test whether it is greater than its left and right neighbors. For boundary indices, use the virtual <b>-∞</b> values.
+  </p>
+
+  <pre>
+Pseudocode:
+
+for i from 0 to n - 1:
+    left  = (i == 0) ? -∞ : nums[i - 1]
+    right = (i == n - 1) ? -∞ : nums[i + 1]
+
+    if nums[i] > left and nums[i] > right:
+        return i
+  </pre>
+
+  <p>
+    <b>Time Complexity:</b> <b>O(n)</b> — in the worst case, we may check every element before finding a peak.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <b>O(1)</b> — only a constant amount of extra memory is used.
+  </p>
+  <p>
+    <b>Performance Bottleneck:</b> The bottleneck is the full linear scan. We are using no information from the shape of the array to skip work.
+  </p>
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p><b>Test Case 1</b></p>
+  <pre>
+Input: 1
+
+    Single element
+    Left neighbor = -∞, Right neighbor = -∞
+Action: Check the only index
+Result: index 0 is a peak
+  </pre>
+
+  <p><b>Test Case 2</b></p>
+  <pre>
+Input: 1 2 3 1
+
+    The array rises and then falls
+    Peak is at the turning point
+Action: Scan from left
+    1 is not a peak
+    2 is not a peak
+    3 is greater than 2 and 1
+Result: index 2 is a peak
+  </pre>
+
+  <p><b>Test Case 3</b></p>
+  <pre>
+Input: 1 2 1 3 5 6 4
+
+    There are multiple peaks
+    Peaks exist at 2 and 6? No — index 2 is not a peak because 1 is lower, but 2 is a peak at index 1; 6 is a peak at index 5
+    The exact answer does not matter; any valid peak is accepted
+Action: Instead of checking all indices, observe slope
+    If mid is rising toward mid + 1, a peak must exist on the right side
+    If mid is falling toward mid + 1, a peak must exist on the left side
+Result: The search can discard half the range each step
+  </pre>
+
+  <p>
+    This is the key discovery: a peak is guaranteed to exist in whichever side still contains a slope change. That means we can use binary search even though the array is not fully sorted.
+  </p>
+  <p>
+    An extreme edge case that often scares candidates is a strictly increasing array such as <b>1 2 3 4</b>. The optimal logic still works because the last element is a peak due to the virtual <b>-∞</b> on the right. Likewise, a strictly decreasing array returns the first element.
+  </p>
+  <p>
+    The signal that should immediately make you think of this approach is: <b>“find any local extremum, and the neighborhood comparison tells you which half still must contain one.”</b>
+  </p>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    There is one fully optimal idea here: <b>binary search on the slope</b>. At each step, compare <b>nums[mid]</b> with <b>nums[mid + 1]</b>.
+    If the slope is rising, a peak must exist to the right. If the slope is falling, a peak must exist to the left, possibly at <b>mid</b> itself.
+  </p>
+
+  <p><b>Algorithm Name:</b> Binary Search on Slope</p>
+
+  <pre>
+Pseudocode:
+
+l = 0
+r = n - 1
+
+while l < r:
+    mid = l + (r - l) / 2
+
+    if nums[mid] < nums[mid + 1]:
+        l = mid + 1
+    else:
+        r = mid
+
+return l
+  </pre>
+
+  <p>
+    <b>Why this works:</b> If <b>nums[mid] &lt; nums[mid + 1]</b>, we are on an ascending slope, so the right half must contain a peak. If <b>nums[mid] &gt; nums[mid + 1]</b>, we are on a descending slope, so a peak exists on the left half including <b>mid</b>. We never discard all peaks.
+  </p>
+
+  <pre>
+C++17 Code:
+
+int findPeakElement(vector<int>& nums) {
+    int l = 0, r = (int)nums.size() - 1;
+
+    while (l < r) {
+        int mid = l + (r - l) / 2;
+
+        if (nums[mid] < nums[mid + 1]) {
+            l = mid + 1;
+        } else {
+            r = mid;
+        }
+    }
+
+    return l;
+}
+  </pre>
+
+  <p><b>Dry Run:</b></p>
+  <pre>
+Input: 1 2 1 3 5 6 4
+
+Step 1
+    l = 0, r = 6
+    mid = 3
+    nums[mid] = 3, nums[mid + 1] = 5
+    Rising slope → peak must be on the right
+Action: l = mid + 1 = 4
+
+Step 2
+    l = 4, r = 6
+    mid = 5
+    nums[mid] = 6, nums[mid + 1] = 4
+    Falling slope → peak must be on the left half including mid
+Action: r = mid = 5
+
+Step 3
+    l = 4, r = 5
+    mid = 4
+    nums[mid] = 5, nums[mid + 1] = 6
+    Rising slope → peak must be on the right
+Action: l = mid + 1 = 5
+
+End
+    l = r = 5
+Result: index 5, value 6, is a peak
+  </pre>
+
+  <p>
+    <b>Extreme Edge Case:</b> For a single-element array <b>[7]</b>, the loop never runs because <b>l == r</b> immediately, and we correctly return index <b>0</b>.
+  </p>
+
+  <p>
+    <b>Time Complexity:</b> <b>O(log n)</b> — each iteration discards half the search space.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <b>O(1)</b> — only a few variables are used.
+  </p>
+</body>
+</html>

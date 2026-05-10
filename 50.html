@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 50 — Pow(x, n)</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .mono {
+      font-family: Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 50 — Pow(x, n) :contentReference[oaicite:0]{index=0}</div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> A floating-point number <span class="mono">x</span> and an integer <span class="mono">n</span>.
+    The task is to compute <span class="mono">x^n</span>, meaning <span class="mono">x</span> multiplied by itself <span class="mono">n</span> times when <span class="mono">n</span> is positive, and the reciprocal when <span class="mono">n</span> is negative.
+  </p>
+  <p>
+    <b>Output:</b> Return the value of <span class="mono">x^n</span> as a floating-point number.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The exponent can be very large in magnitude, so a linear multiplication approach is too slow. Negative exponents must be converted into reciprocals. The implementation must also handle the extreme case where <span class="mono">n = INT_MIN</span>, because negating it directly overflows a 32-bit integer.
+  </p>
+  <p>
+    <b>Edge Cases:</b>
+    Empty input does not apply here, but the meaningful corner cases do:
+  </p>
+  <ul>
+    <li><span class="mono">n = 0</span> — result should be <span class="mono">1</span> for any nonzero base.</li>
+    <li><span class="mono">x = 1</span> or <span class="mono">x = -1</span> — results repeat predictably even for huge exponents.</li>
+    <li><span class="mono">x = 0</span> with positive exponent — result is <span class="mono">0</span>.</li>
+    <li><span class="mono">n &lt; 0</span> — must return <span class="mono">1 / x<sup>|n|</sup></span>.</li>
+    <li><span class="mono">n = INT_MIN</span> — must avoid overflow while taking absolute value.</li>
+    <li>Very large <span class="mono">|n|</span> — recursion depth or repeated multiplication can become a problem if the approach is not logarithmic.</li>
+  </ul>
+
+  <hr />
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    Strip away the story: this is really asking for an efficient way to compute repeated multiplication using the structure of the exponent, not by multiplying one step at a time.
+  </p>
+  <p>
+    The core challenge is to reduce the number of multiplications from <span class="mono">O(|n|)</span> to <span class="mono">O(log |n|)</span>.
+  </p>
+  <p>
+    <b>Category:</b> Binary exponentiation / divide-and-conquer / fast power.
+  </p>
+  <p>
+    <b>Mental model:</b> Think of the exponent in binary. Every bit tells you whether to include a particular power of the base. Squaring repeatedly gives you powers of <span class="mono">x</span> at exponentially growing scales.
+  </p>
+  <p>
+    <b>Subtle trap:</b> Many candidates convert <span class="mono">n</span> to <span class="mono">abs(n)</span> using an <span class="mono">int</span>. That breaks for <span class="mono">INT_MIN</span> because <span class="mono">abs(INT_MIN)</span> is not representable in 32-bit signed integer.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The naive idea is to multiply <span class="mono">x</span> by itself <span class="mono">|n|</span> times, then invert the result if <span class="mono">n</span> is negative.
+  </p>
+
+  <pre>if n == 0:
+    return 1
+
+isNegative = (n &lt; 0)
+power = absolute value of n
+result = 1
+
+repeat power times:
+    result = result * x
+
+if isNegative:
+    return 1 / result
+else:
+    return result</pre>
+
+  <p>
+    <b>Time Complexity:</b> <span class="mono">O(|n|)</span>. The loop runs once per unit of exponent.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <span class="mono">O(1)</span>. Only a constant number of variables are used.
+  </p>
+  <p>
+    <b>Performance bottleneck:</b> The repeated multiplication itself. For large exponents, this becomes far too slow.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p><b>Test Case 1</b></p>
+  <pre>Input: x = 2.0, n = 10
+    Straight multiplication would do 10 multiplies
+    But 10 in binary is 1010
+Action: Use squaring to jump across powers
+Result: 2^10 = 1024</pre>
+
+  <p><b>What this reveals:</b> The exponent can be decomposed into powers of two. Instead of building the answer one multiplication at a time, we can build the needed powers by squaring.</p>
+
+  <p><b>Test Case 2</b></p>
+  <pre>Input: x = 2.0, n = -3
+    Negative exponent means reciprocal
+    2^-3 = 1 / 2^3
+Action: First compute 2^3, then invert
+Result: 0.125</pre>
+
+  <p><b>What this reveals:</b> Negative exponent is not a separate hard problem. Convert it once into a positive exponent problem, then handle the reciprocal at the end.</p>
+
+  <p><b>Test Case 3 (Edge Case)</b></p>
+  <pre>Input: x = 2.0, n = INT_MIN
+    abs(INT_MIN) overflows a 32-bit int
+    Directly doing n = -n is unsafe
+Action: Promote n to a larger type before negation
+Result: computation remains correct</pre>
+
+  <p><b>What this reveals:</b> The solution must protect exponent conversion using a wider integer type such as <span class="mono">long long</span>.</p>
+
+  <p>
+    The inefficiency in brute force is now obvious: most multiplications are wasted. If an exponent has 30 bits, we do not need 2<sup>30</sup> operations; we only need to inspect those 30 bits and square at each level.
+  </p>
+  <p>
+    <b>Signal to recognize this approach in future problems:</b> Whenever a problem asks for repeated multiplication, repeated application of an operation, or a power-like recurrence, think of binary exponentiation immediately.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    There is one optimal idea here: binary exponentiation. It is already the fully optimal approach for this problem.
+  </p>
+
+  <p>
+    The key insight is simple:  
+    <span class="mono">x^n</span> can be broken into squares.
+    If <span class="mono">n</span> is even, then <span class="mono">x^n = (x<sup>2</sup>)<sup>n/2</sup></span>.  
+    If <span class="mono">n</span> is odd, then <span class="mono">x^n = x * x^(n-1)</span>.  
+    This reduces the exponent by about half each step.
+  </p>
+
+  <p><b>Optimized Solution — Binary Exponentiation (Iterative)</b></p>
+
+  <pre>double myPow(double x, int n) {
+    long long exp = n;
+    if (exp &lt; 0) {
+        x = 1.0 / x;
+        exp = -exp;
+    }
+
+    double result = 1.0;
+
+    while (exp &gt; 0) {
+        if (exp &amp; 1LL) {
+            result *= x;
+        }
+        x *= x;
+        exp &gt;&gt;= 1;
+    }
+
+    return result;
+}</pre>
+
+  <p><b>Dry Run</b></p>
+  <pre>Input: x = 2.0, n = 10
+
+Step 1 — Initialization
+    exp = 10
+    result = 1.0
+
+Step 2 — exp = 10 (binary 1010)
+    exp is even, so do not multiply result
+    Square x: x = 4.0
+    Shift exp: exp = 5
+
+Step 3 — exp = 5 (binary 0101)
+    exp is odd, so result *= x
+    result = 1.0 * 4.0 = 4.0
+    Square x: x = 16.0
+    Shift exp: exp = 2
+
+Step 4 — exp = 2 (binary 0010)
+    exp is even, so result stays 4.0
+    Square x: x = 256.0
+    Shift exp: exp = 1
+
+Step 5 — exp = 1 (binary 0001)
+    exp is odd, so result *= x
+    result = 4.0 * 256.0 = 1024.0
+    Square x: x = 65536.0
+    Shift exp: exp = 0
+
+Final Result
+    1024.0</pre>
+
+  <p><b>How the extreme edge case is handled</b></p>
+  <pre>Input: x = 2.0, n = INT_MIN
+
+Step 1 — Promote exponent
+    exp = (long long)n
+
+Step 2 — Negate safely
+    exp = -exp   // safe because exp is long long
+
+Step 3 — Continue with binary exponentiation
+    No overflow from absolute value conversion
+    Final computation is correct</pre>
+
+  <p><b>Time Complexity:</b> <span class="mono">O(log |n|)</span>. Each loop iteration halves the exponent by shifting right one bit. The number of iterations equals the number of bits in <span class="mono">|n|</span>.</p>
+  <p><b>Space Complexity:</b> <span class="mono">O(1)</span>. The iterative version uses constant extra space.</p>
+  <p><b>Algorithm name:</b> Binary exponentiation, also called fast power or exponentiation by squaring.</p>
+
+</body>
+</html>

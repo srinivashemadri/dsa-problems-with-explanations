@@ -1,0 +1,302 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 24px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="title">LeetCode 875 — Koko Eating Bananas</div>
+
+<div>Following the requested interview format :contentReference[oaicite:0]{index=0}</div>
+
+<div class="section">Step 1 — Problem Statement</div>
+
+<p>
+<b>Input:</b> An array <b>piles</b> where <code>piles[i]</code> is the number of bananas in the <code>i</code>-th pile, and an integer <b>h</b> representing the total number of hours Koko has to finish all bananas.
+</p>
+
+<p>
+<b>Output:</b> The minimum integer eating speed <b>k</b> such that Koko can eat all bananas within <b>h</b> hours. In one hour, she can eat up to <b>k</b> bananas from a single pile; if the pile has fewer than <code>k</code>, she finishes that pile and stops for that hour.
+</p>
+
+<p>
+<b>Key Constraints:</b> The answer is an integer speed, and the total hours needed at a given speed is monotonic: if Koko can finish at speed <code>k</code>, then any larger speed also works. This monotonic property is the core reason binary search applies.
+</p>
+
+<p>
+<b>Edge Cases:</b> A single pile, all piles equal, very large piles, <code>h</code> equal to the number of piles, <code>h</code> much larger than needed, and the extreme case where the minimum speed is exactly the maximum pile size. Another subtle case is when rounding up matters, because each pile may take a partial hour.
+</p>
+
+<hr>
+
+<div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+
+<p>
+This problem is really asking: <b>what is the smallest integer speed that makes a feasibility condition true?</b> The story is just packaging; the core task is to search for the minimum value in a monotonic boolean space.
+</p>
+
+<p>
+The algorithmic challenge is to compute, for a candidate speed, how many hours are required, and then use that result to guide the search.
+</p>
+
+<p>
+<b>Category:</b> Binary Search on Answer.
+</p>
+
+<p>
+<b>Mental Model:</b> Imagine a dial for eating speed. At low speeds, Koko fails. At high speeds, Koko succeeds. Somewhere there is a boundary between failure and success, and we need the first successful speed.
+</p>
+
+<p>
+<b>Subtle Trap:</b> The most common mistake is trying to simulate hour by hour instead of counting hours per pile using ceiling division. The other trap is getting the boundary logic wrong in binary search and returning the wrong side of the transition.
+</p>
+
+<hr>
+
+<div class="section">Step 3 — Brute Force Solution</div>
+
+<p>
+Try every possible speed from <code>1</code> to <code>max(piles)</code>. For each speed, compute the total hours needed by summing <code>ceil(pile / speed)</code> over all piles. Return the first speed that fits within <code>h</code>.
+</p>
+
+<pre>
+for speed from 1 to maxPile:
+    hours = 0
+    for each pile in piles:
+        hours += ceil(pile / speed)
+    if hours <= h:
+        return speed
+</pre>
+
+<p>
+<b>Time Complexity:</b> <code>O(maxPile × n)</code>, where <code>n</code> is the number of piles. We test every possible speed and scan all piles for each speed.
+</p>
+
+<p>
+<b>Space Complexity:</b> <code>O(1)</code>, ignoring input storage.
+</p>
+
+<p>
+<b>Performance Bottleneck:</b> The speed range can be huge, so checking every speed is too slow.
+</p>
+
+<hr>
+
+<div class="section">Step 4 — Intuition Building</div>
+
+<div><b>Test Case 1</b></div>
+<p>
+Input: <code>piles = [3, 6, 7, 11], h = 8</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;Try speed <code>4</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;Hours per pile: <code>ceil(3/4)=1, ceil(6/4)=2, ceil(7/4)=2, ceil(11/4)=3</code><br>
+Action: Total hours = <code>1 + 2 + 2 + 3 = 8</code><br>
+Result: Speed <code>4</code> works.
+</p>
+
+<p>
+Now try speed <code>3</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;Hours per pile: <code>1, 2, 3, 4</code><br>
+Action: Total hours = <code>10</code><br>
+Result: Speed <code>3</code> fails.
+</p>
+
+<p>
+This shows the boundary clearly: smaller speeds fail, larger speeds may work. That is exactly the shape binary search needs.
+</p>
+
+<div><b>Test Case 2</b></div>
+<p>
+Input: <code>piles = [30, 11, 23, 4, 20], h = 5</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;Here Koko has only as many hours as piles.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;That means she must finish exactly one pile per hour, so the speed must be at least the largest pile.
+</p>
+
+<p>
+Action: Minimum feasible speed = <code>30</code><br>
+Result: Answer is <code>30</code>.
+</p>
+
+<p>
+This is an extreme case that defeats naive intuition. Even though the total bananas are not enormous, the hour limit forces the speed to jump to the maximum pile size.
+</p>
+
+<div><b>Test Case 3 (Edge Case)</b></div>
+<p>
+Input: <code>piles = [312884470], h = 968709470</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;One pile only, and plenty of hours.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Even speed <code>1</code> is enough because <code>ceil(312884470 / 1) = 312884470</code>, which is within the hour limit.
+</p>
+
+<p>
+Action: Minimum feasible speed = <code>1</code><br>
+Result: Answer is <code>1</code>.
+</p>
+
+<p>
+This shows why the lower bound can be as small as <code>1</code>. It also reinforces the key pattern: we are not searching for a pile-related index, but for the smallest valid integer speed.
+</p>
+
+<p>
+<b>Signal to recognize this approach in future problems:</b> whenever a numeric answer becomes feasible/infeasible in a monotonic way, search the answer space with binary search.
+</p>
+
+<hr>
+
+<div class="section">Step 5 — Optimized Solution</div>
+
+<p>
+There is only one meaningful optimized solution here: <b>binary search on the answer</b>. There is no separate intermediate optimization worth splitting out.
+</p>
+
+<p>
+We define a helper that checks whether a given speed is enough. Then we binary search the smallest speed that passes the check.
+</p>
+
+<p>
+<b>Idea:</b> If speed <code>k</code> works, then every speed greater than <code>k</code> also works. So the valid speeds form a suffix, and we need the leftmost valid one.
+</p>
+
+<p>
+<b>Pseudocode:</b>
+</p>
+
+<pre>
+function canFinish(speed):
+    hours = 0
+    for each pile in piles:
+        hours += ceil(pile / speed)
+    return hours <= h
+
+low = 1
+high = max(piles)
+
+while low < high:
+    mid = low + (high - low) / 2
+    if canFinish(mid):
+        high = mid
+    else:
+        low = mid + 1
+
+return low
+</pre>
+
+<p>
+<b>Why this works:</b> The check function is monotonic. Binary search on a monotonic predicate finds the first true value, which is exactly the minimum feasible speed.
+</p>
+
+<p>
+<b>Time Complexity:</b> <code>O(n log M)</code>, where <code>n</code> is the number of piles and <code>M = max(piles)</code>. Each feasibility check scans all piles in <code>O(n)</code>, and binary search performs <code>O(log M)</code> checks.
+</p>
+
+<p>
+<b>Space Complexity:</b> <code>O(1)</code>, excluding input storage.
+</p>
+
+<div><b>Dry Run</b></div>
+
+<p>
+Input: <code>piles = [3, 6, 7, 11], h = 8</code>
+</p>
+
+<p>
+<b>Initial Range:</b> <code>low = 1, high = 11</code>
+</p>
+
+<p>
+<b>Step 1:</b> <code>mid = 6</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;Hours = <code>ceil(3/6)=1</code> + <code>ceil(6/6)=1</code> + <code>ceil(7/6)=2</code> + <code>ceil(11/6)=2</code> = <code>6</code><br>
+Action: <code>6</code> works, so move left: <code>high = 6</code>
+</p>
+
+<p>
+<b>Step 2:</b> <code>low = 1, high = 6, mid = 3</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;Hours = <code>1 + 2 + 3 + 4 = 10</code><br>
+Action: <code>3</code> fails, so move right: <code>low = 4</code>
+</p>
+
+<p>
+<b>Step 3:</b> <code>low = 4, high = 6, mid = 5</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;Hours = <code>1 + 2 + 2 + 3 = 8</code><br>
+Action: <code>5</code> works, so move left: <code>high = 5</code>
+</p>
+
+<p>
+<b>Step 4:</b> <code>low = 4, high = 5, mid = 4</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;Hours = <code>1 + 2 + 2 + 3 = 8</code><br>
+Action: <code>4</code> works, so move left: <code>high = 4</code>
+</p>
+
+<p>
+Final: <code>low = high = 4</code><br>
+<b>Result:</b> <code>4</code>
+</p>
+
+<p>
+<b>Extreme Edge Case Handling:</b> If <code>h = piles.size()</code>, then each pile must be cleared in one hour, so the algorithm naturally pushes the answer toward <code>max(piles)</code>. If <code>h</code> is large enough, the search naturally collapses to <code>1</code>. No special-case branching is required.
+</p>
+
+<p>
+<b>Interview-ready C++17 code:</b>
+</p>
+
+<pre>
+int minEatingSpeed(vector<int>& piles, int h) {
+    int low = 1;
+    int high = *max_element(piles.begin(), piles.end());
+
+    while (low < high) {
+        int mid = low + (high - low) / 2;
+        long long hours = 0;
+
+        for (int pile : piles) {
+            hours += (pile + mid - 1) / mid;
+        }
+
+        if (hours <= h) {
+            high = mid;
+        } else {
+            low = mid + 1;
+        }
+    }
+
+    return low;
+}
+</pre>
+
+</body>
+</html>

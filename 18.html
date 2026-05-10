@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 18 - 4Sum</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="title">LeetCode 18 — 4Sum</div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> An integer array <b>nums</b> and an integer <b>target</b>.
+    We need to find all unique quadruplets <b>[a, b, c, d]</b> such that
+    <b>a + b + c + d = target</b>.
+  </p>
+  <p>
+    <b>Output:</b> Return every distinct quadruplet without duplicates. The order of quadruplets does not matter.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The same value may appear many times in the array, so duplicate quadruplets must be removed carefully.
+    Also, the sum of four integers can overflow a 32-bit int, so the sum should be computed using a wider type such as <b>long long</b>.
+  </p>
+  <p>
+    <b>Edge Cases:</b> fewer than 4 elements; all elements identical; many duplicates; negative numbers mixed with positive numbers; no valid quadruplet; very large values near integer limits; already sorted or reverse-sorted input.
+  </p>
+
+  <div class="section">Step 2 — Problem Understanding & Approach Overview</div>
+  <p>
+    This is really asking for all unique combinations of <b>four numbers</b> whose sum matches a target, while preventing repeated answers caused by duplicate values.
+    The core challenge is not just finding one quadruplet, but finding <b>all unique quadruplets efficiently</b>.
+  </p>
+  <p>
+    <b>Category:</b> Array + Sorting + Two Pointers + Duplicate Handling.
+  </p>
+  <p>
+    <b>Mental model:</b> Sort the array first, then fix the first two numbers and use two pointers for the remaining two numbers.
+    Sorting turns duplicate elimination and pointer movement into something deterministic.
+  </p>
+  <p>
+    <b>Common trap:</b> Candidates often either brute-force all 4 indices, which is too slow, or they forget to skip duplicates at one of the levels and end up returning repeated quadruplets.
+    Another subtle trap is integer overflow when adding four integers.
+  </p>
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The naive way is to check every possible quadruplet using four nested loops, then store only unique results.
+  </p>
+
+  <pre>
+Pseudo-code:
+
+sort nums
+use a set to store unique quadruplets
+
+for i from 0 to n-1:
+    for j from i+1 to n-1:
+        for k from j+1 to n-1:
+            for l from k+1 to n-1:
+                if nums[i] + nums[j] + nums[k] + nums[l] == target:
+                    insert sorted quadruplet into set
+
+convert set to answer list
+return answer
+  </pre>
+
+  <p>
+    <b>Time Complexity:</b> O(n<sup>4</sup>) because we try every combination of four indices.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(m) for storing the unique quadruplets in a set, where m is the number of valid answers.
+  </p>
+  <p>
+    <b>Bottleneck:</b> The four nested loops. Even modest input sizes make this approach too slow.
+  </p>
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p><b>Test Case 1</b></p>
+  <pre>
+Input: nums = [1, 0, -1, 0, -2, 2], target = 0
+    Sort first → [-2, -1, 0, 0, 1, 2]
+    We want all unique quadruplets
+Action:
+    Fix first number, fix second number, then use two pointers for the last two numbers
+Result:
+    Valid quadruplets found without repeating the same value pattern
+  </pre>
+
+  <p><b>Test Case 2</b></p>
+  <pre>
+Input: nums = [2, 2, 2, 2, 2], target = 8
+    Sort first → [2, 2, 2, 2, 2]
+    Many duplicate values, but only one unique quadruplet exists
+Action:
+    Skip repeated values at each fixed position
+Result:
+    [[2, 2, 2, 2]]
+  </pre>
+
+  <p><b>Test Case 3 (Edge Case)</b></p>
+  <pre>
+Input: nums = [1, 2, 3], target = 6
+    Fewer than 4 elements
+Action:
+    No quadruplet can exist
+Result:
+    []
+  </pre>
+
+  <p>
+    The key insight appears after sorting: once the first two numbers are fixed, the remaining two numbers can be searched using the classic two-pointer pattern because the array is ordered.
+    That removes one full loop compared to brute force.
+  </p>
+  <p>
+    In future problems, whenever you need all unique <b>k-sums</b> from an array and duplicate control matters, think immediately about <b>sorting + fixed prefix + two pointers</b>.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    There is one meaningful optimized approach here: <b>sort the array, fix two indices, and use two pointers for the remaining pair</b>.
+    This is the standard optimal interview solution for 4Sum.
+  </p>
+
+  <p>
+    <b>Idea:</b> After sorting, choose the first element with index <b>i</b>, the second element with index <b>j</b>, then search the remaining subarray with two pointers <b>l</b> and <b>r</b>.
+    Skip duplicates at every level so the same quadruplet is never produced twice.
+  </p>
+
+  <pre>
+Pseudo-code:
+
+sort nums
+answer = empty list
+
+for i from 0 to n-4:
+    if i > 0 and nums[i] == nums[i-1]:
+        continue
+
+    for j from i+1 to n-3:
+        if j > i+1 and nums[j] == nums[j-1]:
+            continue
+
+        l = j+1
+        r = n-1
+
+        while l < r:
+            sum = nums[i] + nums[j] + nums[l] + nums[r]
+
+            if sum == target:
+                add quadruplet to answer
+                l++
+                r--
+                skip duplicate values at l
+                skip duplicate values at r
+
+            else if sum < target:
+                l++
+            else:
+                r--
+  </pre>
+
+  <p>
+    <b>Dry Run on [1, 0, -1, 0, -2, 2], target = 0</b>
+  </p>
+
+  <pre>
+Sorted array: [-2, -1, 0, 0, 1, 2]
+
+Pivot i = 0 → -2
+  j = 1 → -1
+    l = 2, r = 5
+    Sum = -2 + -1 + 0 + 2 = -1
+    Need bigger sum → l++
+
+    l = 3, r = 5
+    Sum = -2 + -1 + 0 + 2 = -1
+    Need bigger sum → l++
+
+    l = 4, r = 5
+    Sum = -2 + -1 + 1 + 2 = 0
+    Found quadruplet: [-2, -1, 1, 2]
+    Move both pointers inward
+
+  j = 2 → 0
+    l = 3, r = 5
+    Sum = -2 + 0 + 0 + 2 = 0
+    Found quadruplet: [-2, 0, 0, 2]
+    Move both pointers inward
+
+    l and r cross → stop
+
+Pivot i = 1 → -1
+  j = 2 → 0
+    l = 3, r = 5
+    Sum = -1 + 0 + 0 + 2 = 1
+    Need smaller sum → r--
+
+    l = 3, r = 4
+    Sum = -1 + 0 + 0 + 1 = 0
+    Found quadruplet: [-1, 0, 0, 1]
+
+Pivot i = 2 → 0
+  j = 3 → 0
+    Remaining range too small for a new valid quadruplet
+Final Result:
+  [[-2, -1, 1, 2], [-2, 0, 0, 2], [-1, 0, 0, 1]]
+  </pre>
+
+  <p>
+    <b>Extreme Edge Case Handling:</b> For inputs like [2, 2, 2, 2, 2] with target 8, duplicate skipping ensures only one quadruplet is returned.
+    Without duplicate checks at <b>i</b>, <b>j</b>, <b>l</b>, and <b>r</b>, the same answer would appear many times.
+  </p>
+
+  <p>
+    <b>Time Complexity:</b> O(n<sup>3</sup>).
+    Sorting costs O(n log n), but the dominant part is the nested choice of <b>i</b> and <b>j</b>, plus the linear two-pointer scan for each pair.
+    That gives O(n<sup>3</sup>) overall.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1) extra space, ignoring the output list.
+    The algorithm only uses a few pointers and counters.
+  </p>
+  <p>
+    <b>Algorithm Name:</b> Sorting + Two Pointers with Duplicate Skipping.
+  </p>
+
+  <pre>
+vector<vector<int>> fourSum(vector<int>& nums, int target) {
+    vector<vector<int>> ans;
+    int n = nums.size();
+    if (n < 4) return ans;
+
+    sort(nums.begin(), nums.end());
+
+    for (int i = 0; i < n - 3; i++) {
+        if (i > 0 && nums[i] == nums[i - 1]) continue;
+
+        for (int j = i + 1; j < n - 2; j++) {
+            if (j > i + 1 && nums[j] == nums[j - 1]) continue;
+
+            int l = j + 1, r = n - 1;
+
+            while (l < r) {
+                long long sum = 1LL * nums[i] + nums[j] + nums[l] + nums[r];
+
+                if (sum == target) {
+                    ans.push_back({nums[i], nums[j], nums[l], nums[r]});
+                    l++;
+                    r--;
+
+                    while (l < r && nums[l] == nums[l - 1]) l++;
+                    while (l < r && nums[r] == nums[r + 1]) r--;
+                }
+                else if (sum < target) {
+                    l++;
+                }
+                else {
+                    r--;
+                }
+            }
+        }
+    }
+
+    return ans;
+}
+  </pre>
+
+</body>
+</html>

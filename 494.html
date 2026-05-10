@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    h2 {
+      font-family: 'Times New Roman', serif;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    h3 {
+      font-family: 'Times New Roman', serif;
+      font-size: 13pt;
+      font-weight: bold;
+      margin-top: 18px;
+      margin-bottom: 8px;
+    }
+    p {
+      margin: 10px 0;
+    }
+    ul {
+      margin: 8px 0 8px 24px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 16px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 22px 0;
+    }
+    .note {
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 494 — Target Sum</div>
+
+  <p>
+    LeetCode 494 asks for the number of ways to assign a <b>+</b> or <b>-</b> sign to every number in the array so that the final expression equals the given target. This is a counting problem, not a decision problem, and the key insight is to convert sign assignment into a subset-counting problem. The requested LC-494 workflow is followed here :contentReference[oaicite:0]{index=0}.
+  </p>
+
+  <hr />
+
+  <h2>Step 1 — Problem Statement</h2>
+  <p>
+    <b>Input:</b> You are given an integer array <b>nums</b> of non-negative integers and an integer <b>tagger</b>. For each number, you must choose either a plus or a minus sign.
+  </p>
+  <p>
+    <b>Output:</b> Return the number of different sign assignments whose total equals <b>tagger</b>.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The array length is small enough for dynamic programming, typically <b>n &le; 20</b>, and the total sum of all values is bounded, typically <b>&sum; nums[i] &le; 1000</b>. That matters because the brute-force search space is still exponential, but the sum-based DP is very manageable.
+  </p>
+  <p>
+    <b>Edge Cases:</b>
+  </p>
+  <ul>
+    <li>All elements are zero. Every zero can be marked <b>+</b> or <b>-</b>, and both choices are distinct assignments.</li>
+    <li>Single-element arrays, especially when the element equals the target or its negative.</li>
+    <li>Targets outside the reachable range, where <b>|target| &gt; total sum</b>.</li>
+    <li>Cases where no assignment works, even though the numbers are small.</li>
+  </ul>
+
+  <h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+  <p>
+    Strip away the story: this is asking, <b>how many ways can we split the array into two groups</b> so that one group is added and the other is subtracted, and the difference becomes the target?
+  </p>
+  <p>
+    The core challenge is not finding one valid expression; it is <b>counting all valid expressions</b> without enumerating every sign pattern.
+  </p>
+  <p>
+    This is a classic <b>counting DP / subset-sum / 0-1 knapsack</b> problem.
+  </p>
+  <p>
+    Mental model: think of every number as a decision point. A <b>+</b> means the number goes into the positive bucket, and a <b>-</b> means it goes into the negative bucket. The final value is the difference between these two buckets.
+  </p>
+  <p>
+    <b>Subtle trap:</b> many candidates forget that <b>0</b> is special. Both <b>+0</b> and <b>-0</b> keep the sum unchanged, but they are still two different assignments, so each zero doubles the count.
+  </p>
+
+  <hr />
+
+  <h2>Step 3 — Brute Force Solution</h2>
+  <p>
+    The most direct solution is to try both signs for every number and count how many complete assignments hit the target.
+  </p>
+
+  <pre>
+function solve(i, currentSum):
+    if i == n:
+        if currentSum == target:
+            return 1
+        return 0
+
+    plusWays  = solve(i + 1, currentSum + nums[i])
+    minusWays = solve(i + 1, currentSum - nums[i])
+
+    return plusWays + minusWays
+  </pre>
+
+  <p>
+    <b>Time Complexity:</b> <b>O(2^n)</b>. Each index branches into two choices, so the recursion tree has two leaves per level.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <b>O(n)</b> for the recursion stack.
+  </p>
+  <p>
+    <b>Performance bottleneck:</b> many different sign paths reach the same <b>(index, currentSum)</b> state, so the same subproblem is recomputed again and again.
+  </p>
+
+  <hr />
+
+  <h2>Step 4 — Intuition Building</h2>
+
+  <h3>Test Case 1</h3>
+  <pre>
+Input: nums = [1], target = 1
+    Only two assignments exist:
+    +1 = 1
+    -1 = -1
+
+Action: Count assignments that equal target
+
+Result: 1 way
+  </pre>
+
+  <h3>Test Case 2</h3>
+  <pre>
+Input: nums = [1, 1], target = 0
+    Possible assignments:
+    +1 +1 = 2
+    +1 -1 = 0
+    -1 +1 = 0
+    -1 -1 = -2
+
+Action: Count the valid zero-sum assignments
+
+Result: 2 ways
+
+Observation:
+    The same total can be reached by different sign patterns.
+    So this is not a shortest-path problem or a boolean existence problem.
+    It is a counting problem.
+  </pre>
+
+  <h3>Test Case 3 (Edge Case)</h3>
+  <pre>
+Input: nums = [0, 0, 0, 0, 1], target = 1
+    Each zero has two valid sign choices:
+    +0 and -0
+    Both keep the sum unchanged, but both count as different assignments.
+
+Action:
+    Fix the 1 as +1
+    Then each of the 4 zeros independently doubles the number of ways
+
+Result: 2^4 = 16 ways
+
+Why brute force feels wasteful:
+    It explores the same sum state repeatedly for every zero,
+    even though the only effect is doubling the count.
+  </pre>
+
+  <p>
+    This is the point where the hidden structure becomes visible: instead of thinking about signs directly, think about the set of numbers chosen to be positive. If the total sum of all numbers is <b>S</b>, and the positive bucket sums to <b>P</b>, then the negative bucket sums to <b>S - P</b>. The final expression becomes <b>P - (S - P) = target</b>, so <b>2P = S + target</b>. That converts the problem into counting subsets with sum <b>(S + target) / 2</b>.
+  </p>
+  <p class="note">
+    Signal to remember for future problems: whenever you see <b>+/- assignments</b>, <b>difference between two groups</b>, or <b>counting ways to reach a target</b>, immediately think of <b>subset-sum counting</b>.
+  </p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution 1 (Intermediate)</h2>
+  <p>
+    The first optimization is to memoize the brute-force recursion. The state is <b>(index, currentSum)</b>. This removes repeated work because the same state may be reached through different sign paths.
+  </p>
+
+  <pre>
+memoize(i, currentSum):
+    if i == n:
+        return 1 if currentSum == target else 0
+
+    if state (i, currentSum) is already computed:
+        return stored value
+
+    ans = memoize(i + 1, currentSum + nums[i]) 
+        + memoize(i + 1, currentSum - nums[i])
+
+    store and return ans
+  </pre>
+
+  <p>
+    Since <b>currentSum</b> can be negative, we usually use an offset based on the total sum, so the DP table size stays finite.
+  </p>
+  <p>
+    <b>Time Complexity:</b> <b>O(n &times; range)</b>, where <b>range</b> is the number of possible sums. With the standard constraints, the total sum is at most about 1000, so the state space is small.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <b>O(n &times; range)</b> for the memo table plus <b>O(n)</b> recursion stack.
+  </p>
+  <p>
+    <b>What was eliminated:</b> repeated recomputation of identical subproblems.
+  </p>
+
+  <h2>Step 5 — Optimized Solution 2 (Best Known / Fully Optimal)</h2>
+  <p>
+    The deeper insight is to remove the sign dimension entirely. Let the total sum be <b>S</b>. If the positive subset sums to <b>P</b>, then the negative subset sums to <b>S - P</b>. We need:
+  </p>
+
+  <pre>
+P - (S - P) = target
+2P = S + target
+P = (S + target) / 2
+  </pre>
+
+  <p>
+    So the problem becomes: <b>count the number of subsets whose sum is (S + target) / 2</b>.
+  </p>
+  <p>
+    This is a standard <b>0/1 knapsack counting</b> problem.
+  </p>
+
+  <p>
+    <b>Important validity checks:</b> if <b>|target| &gt; S</b>, there is no way to reach the target. If <b>S + target</b> is odd, the required subset sum is not an integer, so the answer is also zero.
+  </p>
+
+  <pre>
+function findTargetSumWays(nums, target):
+    S = sum of nums
+
+    if abs(target) > S:
+        return 0
+
+    if (S + target) is odd:
+        return 0
+
+    need = (S + target) / 2
+
+    dp[0..need] = 0
+    dp[0] = 1
+
+    for each x in nums:
+        for s from need down to x:
+            dp[s] += dp[s - x]
+
+    return dp[need]
+  </pre>
+
+  <pre>
+int findTargetSumWays(vector&lt;int&gt;&amp; nums, int target) {
+    int total = 0;
+    for (int x : nums) total += x;
+
+    if (abs(target) &gt; total) return 0;
+
+    int sumPlusTarget = total + target;
+    if (sumPlusTarget % 2 != 0) return 0;
+
+    int need = sumPlusTarget / 2;
+    vector&lt;long long&gt; dp(need + 1, 0);
+    dp[0] = 1;
+
+    for (int x : nums) {
+        for (int s = need; s &gt;= x; --s) {
+            dp[s] += dp[s - x];
+        }
+    }
+
+    return (int)dp[need];
+}
+  </pre>
+
+  <h3>Dry Run</h3>
+  <pre>
+Input: nums = [1, 1, 1, 1, 1], target = 3
+Total sum S = 5
+Need subset sum = (S + target) / 2 = (5 + 3) / 2 = 4
+
+Initial dp:
+    [1, 0, 0, 0, 0]
+
+After first 1:
+    [1, 1, 0, 0, 0]
+
+After second 1:
+    [1, 2, 1, 0, 0]
+
+After third 1:
+    [1, 3, 3, 1, 0]
+
+After fourth 1:
+    [1, 4, 6, 4, 1]
+
+After fifth 1:
+    [1, 5, 10, 10, 5]
+
+Answer:
+    dp[4] = 5
+  </pre>
+
+  <h3>Edge Case Dry Run: Zeros</h3>
+  <pre>
+Input: nums = [0, 0, 0, 0, 1], target = 1
+Total sum S = 1
+Need subset sum = (1 + 1) / 2 = 1
+
+Initial dp:
+    [1, 0]
+
+After first 0:
+    [2, 0]
+
+After second 0:
+    [4, 0]
+
+After third 0:
+    [8, 0]
+
+After fourth 0:
+    [16, 0]
+
+After 1:
+    [16, 16]
+
+Answer:
+    dp[1] = 16
+  </pre>
+
+  <p>
+    <b>Time Complexity:</b> <b>O(n &times; need)</b>, where <b>need = (S + target) / 2</b>. Since <b>S &le; 1000</b>, this is comfortably efficient.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <b>O(need)</b> using the 1D DP array.
+  </p>
+  <p>
+    <b>Why this is the best form:</b> it compresses the whole sign-assignment problem into a clean subset-counting DP, while still handling zeros correctly and avoiding the exponential explosion of brute force.
+  </p>
+</body>
+</html>

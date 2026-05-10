@@ -1,0 +1,200 @@
+<html>
+<head>
+  <title>LeetCode 34 - Find First and Last Position of Element in Sorted Array</title>
+</head>
+<body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.8; max-width: 760px; margin: 40px auto; color: #000;">
+  <div style="text-align: center; font-size: 14pt; font-weight: bold;">LeetCode 34 — Find First and Last Position of Element in Sorted Array</div>
+
+  <hr>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> A sorted array of integers <code>nums</code> in non-decreasing order and an integer <code>target</code>.
+    <br>
+    <b>Output:</b> Return the starting and ending index of <code>target</code> in the array. If <code>target</code> does not exist, return <code>[-1, -1]</code>.
+    <br>
+    <b>Key Constraints:</b> The array is already sorted, so the ordering information is the main clue. Duplicates may exist, and the target can appear multiple times or not at all.
+    <br>
+    <b>Edge Cases:</b> empty array, single element, target absent, target appears once, target appears many times, target only at the beginning or end, all elements equal, and the case where the whole array is the target.
+  </p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    This is really asking for the <b>leftmost</b> and <b>rightmost</b> occurrence of a value in a sorted array. The core challenge is not finding <i>any</i> occurrence, but finding both boundaries efficiently.
+    <br>
+    Category: <b>Binary Search on boundaries</b>.
+    <br>
+    Mental model: because the array is sorted, the target values form one contiguous block, and binary search can be used to find the block’s left edge and right edge separately.
+    <br>
+    Common trap: find one target using binary search and then expand linearly left and right. That works functionally, but it loses the logarithmic advantage and becomes <code>O(n)</code> in the worst case.
+  </p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 3 — Brute Force Solution</div>
+  <p>
+    The naive approach is simple: scan the whole array, remember the first index where <code>nums[i] == target</code>, and keep updating the last index whenever the target appears again.
+  </p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+first = -1
+last = -1
+
+for i from 0 to n - 1:
+    if nums[i] == target:
+        if first == -1:
+            first = i
+        last = i
+
+return [first, last]
+  </pre>
+  <p>
+    <b>Time Complexity:</b> <code>O(n)</code> because every element may be checked once.
+    <br>
+    <b>Space Complexity:</b> <code>O(1)</code> because only a few variables are used.
+    <br>
+    Bottleneck: we ignore the fact that the array is sorted, so we do unnecessary full traversal even though binary search can isolate the range much faster.
+  </p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 4 — Intuition Building</div>
+
+  <p style="font-weight: bold; margin-bottom: 0;">Test Case 1</p>
+  <p style="margin-top: 0;">
+    Input: <code>nums = [5, 7, 7, 8, 8, 10]</code>, <code>target = 8</code><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Target appears in a block: indices 3 and 4<br>
+    Action: Find the left boundary first, then the right boundary<br>
+    Result: <code>[3, 4]</code>
+  </p>
+
+  <p style="font-weight: bold; margin-bottom: 0;">Test Case 2</p>
+  <p style="margin-top: 0;">
+    Input: <code>nums = [5, 7, 7, 8, 8, 10]</code>, <code>target = 6</code><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Target is absent, but the sorted order still lets us rule out halves quickly<br>
+    Action: Binary search never finds a valid boundary<br>
+    Result: <code>[-1, -1]</code>
+  </p>
+
+  <p style="font-weight: bold; margin-bottom: 0;">Test Case 3 (Edge Case)</p>
+  <p style="margin-top: 0;">
+    Input: <code>nums = [2, 2, 2, 2]</code>, <code>target = 2</code><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Entire array is one contiguous target block<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;A linear expansion solution would still work, but it wastes the sorted property<br>
+    Action: Left boundary becomes 0, right boundary becomes 3<br>
+    Result: <code>[0, 3]</code>
+  </p>
+
+  <p>
+    The key insight is that the target range is contiguous because the array is sorted. So instead of searching for the value itself, we search for the <b>first position where the value could appear</b> and the <b>first position after the value stops appearing</b>.
+    <br>
+    Signal to remember: whenever a sorted array asks for the <i>first</i>, <i>last</i>, <i>lower bound</i>, or <i>range</i> of something, think of boundary binary search immediately. :contentReference[oaicite:0]{index=0}
+  </p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 5 — Optimized Solution</div>
+  <p>
+    This problem has one meaningful optimized approach: use two binary searches, one for the left boundary and one for the right boundary.
+  </p>
+
+  <p>
+    The first search finds the leftmost index where <code>target</code> could be placed without breaking order. The second search finds the rightmost index by searching for the first index greater than <code>target</code> and subtracting 1.
+  </p>
+
+  <p style="font-weight: bold; margin-bottom: 0;">Optimized Idea</p>
+  <p style="margin-top: 0;">
+    Search for the lower bound of <code>target</code>, then search for the lower bound of <code>target + 1</code> and step back by one. This cleanly identifies the full range of equal values.
+  </p>
+
+  <p style="font-weight: bold; margin-bottom: 0;">Pseudocode</p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+function lowerBound(nums, x):
+    left = 0
+    right = nums.size()
+
+    while left < right:
+        mid = left + (right - left) / 2
+        if nums[mid] < x:
+            left = mid + 1
+        else:
+            right = mid
+
+    return left
+
+function searchRange(nums, target):
+    leftIndex = lowerBound(nums, target)
+    if leftIndex == nums.size() or nums[leftIndex] != target:
+        return [-1, -1]
+
+    rightIndex = lowerBound(nums, target + 1) - 1
+    return [leftIndex, rightIndex]
+  </pre>
+
+  <p style="font-weight: bold; margin-bottom: 0;">Full Working C++17 Code</p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">vector&lt;int&gt; searchRange(vector&lt;int&gt;&amp; nums, int target) {
+    auto lowerBound = [&](int x) {
+        int left = 0, right = (int)nums.size();
+        while (left &lt; right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] &lt; x) {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+        return left;
+    };
+
+    int leftIndex = lowerBound(target);
+    if (leftIndex == (int)nums.size() || nums[leftIndex] != target) {
+        return {-1, -1};
+    }
+
+    int rightIndex = lowerBound(target + 1) - 1;
+    return {leftIndex, rightIndex};
+}</pre>
+
+  <p style="font-weight: bold; margin-bottom: 0;">Dry Run</p>
+  <p style="margin-top: 0;">
+    Input: <code>nums = [5, 7, 7, 8, 8, 10]</code>, <code>target = 8</code>
+  </p>
+
+  <p style="margin-top: 0;">
+    <b>Left Boundary Search</b><br>
+    Pivot idea: find first index where value is not less than 8<br>
+    left = 0, right = 6<br>
+    mid = 3, nums[3] = 8 → move right to 3<br>
+    left = 0, right = 3<br>
+    mid = 1, nums[1] = 7 &lt; 8 → move left to 2<br>
+    left = 2, right = 3<br>
+    mid = 2, nums[2] = 7 &lt; 8 → move left to 3<br>
+    Stop: leftIndex = 3
+  </p>
+
+  <p style="margin-top: 0;">
+    <b>Right Boundary Search</b><br>
+    Search for first index where value is not less than 9<br>
+    left = 0, right = 6<br>
+    mid = 3, nums[3] = 8 &lt; 9 → move left to 4<br>
+    left = 4, right = 6<br>
+    mid = 5, nums[5] = 10 ≥ 9 → move right to 5<br>
+    left = 4, right = 5<br>
+    mid = 4, nums[4] = 8 &lt; 9 → move left to 5<br>
+    Stop: lowerBound(9) = 5, so rightIndex = 5 - 1 = 4
+  </p>
+
+  <p style="margin-top: 0;">
+    Final Result: <code>[3, 4]</code>
+  </p>
+
+  <p style="font-weight: bold; margin-bottom: 0;">Extreme Edge Case Handling</p>
+  <p style="margin-top: 0;">
+    For <code>nums = [2, 2, 2, 2]</code>, <code>target = 2</code>:<br>
+    leftIndex = 0 because the first valid position is the beginning.<br>
+    lowerBound(3) = 4, so rightIndex = 3.<br>
+    Final Result: <code>[0, 3]</code>
+  </p>
+
+  <p>
+    <b>Time Complexity:</b> <code>O(log n)</code> because each lower-bound search halves the search space, and we run it twice.
+    <br>
+    <b>Space Complexity:</b> <code>O(1)</code> because the solution uses only a few pointers and no extra data structure.
+    <br>
+    Name of the technique: <b>Boundary Binary Search</b> / <b>Lower Bound Search</b>.
+  </p>
+</body>
+</html>

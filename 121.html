@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 121 — Best Time to Buy and Sell Stock</title>
+  <style>
+    body {
+      font-family: "Times New Roman", serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 8px;
+    }
+    .code {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .indent {
+      margin-left: 22px;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 121 — Best Time to Buy and Sell Stock</div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> You are given an array <b>prices</b>, where <b>prices[i]</b> is the price of a given stock on day <b>i</b>.
+    You are allowed to complete at most one transaction: buy one share on one day and sell it on a later day.
+  </p>
+  <p>
+    <b>Output:</b> Return the maximum profit you can achieve. If no profit is possible, return <b>0</b>.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The sell day must be strictly after the buy day. Only one buy and one sell are allowed. The answer is never negative because you can always choose not to trade.
+  </p>
+  <p>
+    <b>Edge Cases:</b> an empty or single-element array, a strictly decreasing array, a strictly increasing array, all equal prices, and very large inputs where an O(n^2) approach becomes too slow.
+    This is the classic one-transaction stock profit problem, and it appears in your requested workflow as a LeetCode solution task. :contentReference[oaicite:0]{index=0}
+  </p>
+
+  <hr />
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    What this problem is really asking is: <b>among all pairs of days, choose one earlier day to buy and one later day to sell so that the difference is maximum</b>.
+    The story is just packaging; the core task is finding the best difference <b>prices[sell] - prices[buy]</b> with <b>sell &gt; buy</b>.
+  </p>
+  <p>
+    This is a <b>single-pass greedy / prefix-min</b> problem. The mental model is simple: as you scan left to right, keep track of the <b>lowest price seen so far</b>, because that is the best possible buy price for the current day.
+    The subtle trap is trying to compare every pair or updating the minimum at the wrong time. Another common mistake is assuming you must buy and sell even when every trade loses money; the correct answer is still 0.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    Try every possible buy day and every possible sell day after it, then compute the profit for each pair.
+  </p>
+  <div class="code">maxProfit = 0
+for buy from 0 to n - 1:
+    for sell from buy + 1 to n - 1:
+        profit = prices[sell] - prices[buy]
+        if profit > maxProfit:
+            maxProfit = profit
+return maxProfit</div>
+  <p>
+    Each buy day is paired with all later sell days. That guarantees correctness because every valid transaction is checked.
+  </p>
+  <p>
+    <b>Time Complexity:</b> O(n²). The outer loop runs n times, and the inner loop can run up to n times for each outer iteration.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). Only a few variables are used.
+  </p>
+  <p>
+    The bottleneck is the pairwise comparison of all possible transactions.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <div class="section" style="font-size:12.5pt; font-weight:bold; margin-top:12px;">Test Case 1</div>
+  <div class="indent">
+    Input: 7 1 5 3 6 4<br/>
+    Current state: no decision yet, but the first useful observation is that 1 is a better buy price than 7.<br/>
+    Action: track the minimum price seen so far and compare every day against it.<br/>
+    Result: best profit becomes 5 by buying at 1 and selling at 6.
+  </div>
+
+  <div class="section" style="font-size:12.5pt; font-weight:bold;">Test Case 2</div>
+  <div class="indent">
+    Input: 7 6 4 3 1<br/>
+    Current state: every new price is lower than the previous minimum.<br/>
+    Action: keep updating the minimum, but no sell day ever produces positive profit.<br/>
+    Result: 0, because the best choice is to do nothing.
+  </div>
+
+  <div class="section" style="font-size:12.5pt; font-weight:bold;">Test Case 3</div>
+  <div class="indent">
+    Input: 1 2 3 4 5<br/>
+    Current state: the first day is already the cheapest seen so far.<br/>
+    Action: hold that minimum and keep checking future days; each day improves the profit.<br/>
+    Result: 4 by buying at 1 and selling at 5.
+  </div>
+
+  <p>
+    The inefficiency in brute force is obvious here: for every day, you repeatedly ask the same question about earlier prices. The key structure is that for any sell day, only the <b>smallest previous price</b> matters. You do not need all previous prices, only the best buy candidate so far.
+  </p>
+  <p>
+    A rare but important edge case is a fully decreasing array. A naive approach might still try to force a transaction, but the optimal logic naturally returns 0 because the running best profit never becomes positive.
+  </p>
+  <p>
+    The moment you see a problem asking for the best pair with an ordering constraint like <b>earlier index, later index</b>, and the score is a difference, you should immediately think: <b>track the prefix minimum while scanning once</b>.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    This problem has one clear optimal solution: a single pass with a running minimum. That is the fully optimal approach, so there is no separate second optimization tier needed here.
+  </p>
+
+  <p><b>Idea:</b> As you scan from left to right, maintain the lowest price seen so far. For each day, treat that day as a possible sell day and compute the profit if you had bought at the best earlier price. Update the answer, then update the minimum if the current price is lower.</p>
+
+  <p><b>Algorithm Name:</b> Prefix Minimum / One-pass Greedy.</p>
+
+  <div class="code">int maxProfit(vector&lt;int&gt;&amp; prices) {
+    int minPrice = INT_MAX;
+    int best = 0;
+
+    for (int price : prices) {
+        if (price &lt; minPrice) {
+            minPrice = price;
+        } else {
+            best = max(best, price - minPrice);
+        }
+    }
+
+    return best;
+}</div>
+
+  <p>
+    <b>Why this works:</b> For each day, the best possible buy day among all earlier days is simply the smallest price seen so far. If you sell today, the best profit is therefore <b>current price - running minimum</b>. Taking the maximum over all days yields the global answer.
+  </p>
+
+  <div class="section" style="font-size:12.5pt; font-weight:bold;">Dry Run</div>
+  <div class="indent">
+    Input: 7 1 5 3 6 4<br/>
+    Pivot idea: not needed here; the important state is the running minimum.<br/><br/>
+    Day 1, price = 7<br/>
+    &nbsp;&nbsp;minPrice = 7<br/>
+    &nbsp;&nbsp;best = 0<br/><br/>
+    Day 2, price = 1<br/>
+    &nbsp;&nbsp;New lower buy price found<br/>
+    &nbsp;&nbsp;minPrice = 1<br/>
+    &nbsp;&nbsp;best = 0<br/><br/>
+    Day 3, price = 5<br/>
+    &nbsp;&nbsp;Profit if sold today = 5 - 1 = 4<br/>
+    &nbsp;&nbsp;best = 4<br/><br/>
+    Day 4, price = 3<br/>
+    &nbsp;&nbsp;Profit if sold today = 3 - 1 = 2<br/>
+    &nbsp;&nbsp;best remains 4<br/><br/>
+    Day 5, price = 6<br/>
+    &nbsp;&nbsp;Profit if sold today = 6 - 1 = 5<br/>
+    &nbsp;&nbsp;best = 5<br/><br/>
+    Day 6, price = 4<br/>
+    &nbsp;&nbsp;Profit if sold today = 4 - 1 = 3<br/>
+    &nbsp;&nbsp;best remains 5<br/><br/>
+    Final Result: 5
+  </div>
+
+  <p>
+    <b>Handling the extreme edge case:</b> for a decreasing array like 7 6 4 3 1, the running minimum keeps dropping, but no day ever beats it as a sell day. The answer stays 0, which is exactly correct.
+  </p>
+
+  <p>
+    <b>Time Complexity:</b> O(n). Each price is processed exactly once, and all work inside the loop is constant time.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). Only two integers are stored: the running minimum and the best profit.
+  </p>
+</body>
+</html>

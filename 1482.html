@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 1482 — Minimum Number of Days to Make m Bouquets</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 16px 0;
+    }
+    .note {
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 1482 — Minimum Number of Days to Make m Bouquets</div>
+
+  <div class="note">
+    This walkthrough follows the requested interview-style structure from the uploaded instructions :contentReference[oaicite:0]{index=0}.
+  </div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> You are given an integer array <b>bloomDay</b>, where <b>bloomDay[i]</b> is the day the <i>i-th</i> flower blooms, along with two integers <b>m</b> and <b>k</b>.
+    A bouquet can be made only by using <b>k adjacent flowers</b> that have all bloomed by the same day.
+  </p>
+  <p>
+    <b>Output:</b> Return the <b>minimum day</b> on which it is possible to make at least <b>m bouquets</b>. If it is impossible, return <b>-1</b>.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The answer is a day value, not an index. The bloom days can be very large, so the search space is over possible days, not over array positions. Adjacent flowers matter, and once a flower is used in one bouquet, it cannot be reused in another.
+  </p>
+  <p>
+    <b>Edge Cases:</b> If <b>m &times; k &gt; n</b>, it is impossible immediately. If all flowers bloom very late, the answer may be the maximum bloom day. If all flowers bloom early, the answer may be the minimum bloom day. If there are gaps of unbloomed flowers, the adjacency chain breaks. A single flower cannot contribute to a bouquet unless <b>k = 1</b>. If the array is already fully bloomed by some day, counting must still respect disjoint groups of size <b>k</b>.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    Strip away the story, and this becomes: <b>find the smallest day such that the array contains at least m disjoint groups of k consecutive elements whose values are all &le; that day</b>.
+  </p>
+  <p>
+    The core challenge is not building bouquets once; it is deciding the earliest day when the condition becomes true. This is a classic <b>binary search on answer</b> problem.
+  </p>
+  <p>
+    <b>Category:</b> Binary Search on Answer + Greedy Feasibility Check.
+  </p>
+  <p>
+    <b>Mental model:</b> Imagine turning days into a threshold. For any day <i>D</i>, mark every flower that has bloomed by then. Now greedily count how many bouquets of length <b>k</b> you can extract from the consecutive bloomed stretches.
+  </p>
+  <p>
+    <b>Subtle trap:</b> Many candidates either try to simulate bouquet creation day by day, which is far too slow, or they count bloomed flowers without respecting adjacency and disjointness. The key is that feasibility is monotonic: if day <i>D</i> works, then any later day also works.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The most naive idea is to try every possible day from the minimum bloom day to the maximum bloom day, and for each day, check whether we can form at least <b>m</b> bouquets.
+  </p>
+
+  <pre>for day from min(bloomDay) to max(bloomDay):
+    count bouquets by scanning the whole array
+    if bouquets >= m:
+        return day
+return -1</pre>
+
+  <p>
+    During the scan for a fixed day, count consecutive flowers with <b>bloomDay[i] &le; day</b>. Every time the streak reaches <b>k</b>, form one bouquet and reset the streak.
+  </p>
+  <p>
+    <b>Time Complexity:</b> O(R &times; n), where <i>R = max(bloomDay) - min(bloomDay) + 1</i>. This is terrible when bloom days are large, because the range can be up to 10<sup>9</sup>.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1).
+  </p>
+  <p>
+    <b>Bottleneck:</b> Repeating a full array scan for every possible day. The value range is what kills this approach.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p><b>Test Case 1</b></p>
+  <pre>Input: bloomDay = [1, 10, 3, 10, 2], m = 3, k = 1
+    Since k = 1, every bloomed flower can be one bouquet.
+    We only need to know how many flowers have bloomed by a given day.
+
+Action:
+    Day 1 -> bloomed flowers = [1, 0, 0, 0, 0] -> bouquets = 1
+    Day 2 -> bloomed flowers = [1, 0, 0, 0, 1] -> bouquets = 2
+    Day 3 -> bloomed flowers = [1, 0, 1, 0, 1] -> bouquets = 3
+
+Result:
+    Minimum day = 3</pre>
+
+  <p><b>Test Case 2</b></p>
+  <pre>Input: bloomDay = [7, 7, 7, 7, 12, 7, 7], m = 2, k = 3
+    We need two disjoint groups of 3 adjacent bloomed flowers.
+    Notice the flower with day 12 creates a gap until day 12.
+
+Action:
+    Day 7 -> bloomed = [1, 1, 1, 1, 0, 1, 1]
+             consecutive bloomed stretches: [1,1,1,1] and [1,1]
+             bouquets from first stretch = 1
+             bouquets from second stretch = 0
+             total = 1
+
+    Day 12 -> bloomed = [1, 1, 1, 1, 1, 1, 1]
+              one full stretch of 7 flowers
+              bouquets = 7 / 3 = 2
+
+Result:
+    Minimum day = 12</pre>
+
+  <p><b>Test Case 3 (Edge Case)</b></p>
+  <pre>Input: bloomDay = [1, 2, 3], m = 2, k = 2
+    Need total flowers = m * k = 4
+    Available flowers = 3
+
+Action:
+    No day can ever create 4 flowers from only 3 positions.
+
+Result:
+    Answer = -1</pre>
+
+  <p>
+    The important pattern is that as the day increases, the set of bloomed flowers only grows. A day that works will never become invalid later. That monotonicity is the exact signal that binary search fits.
+  </p>
+  <p>
+    A future problem should immediately trigger this approach when you see: <b>“find minimum / maximum value such that a condition becomes true”</b>, and the condition becomes easier as the candidate value increases.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    This problem has one meaningful optimized solution: <b>binary search on the answer</b> with a greedy feasibility check.
+  </p>
+  <p>
+    The further insight is simple but powerful: instead of testing every day, test only a logarithmic number of candidate days. For each candidate day, count how many bouquets can be formed from consecutive bloomed flowers.
+  </p>
+
+  <p><b>Algorithm Name:</b> Binary Search on Answer + Greedy Scan</p>
+
+  <p><b>Optimized Pseudocode</b></p>
+  <pre>function canMake(day):
+    bouquets = 0
+    streak = 0
+
+    for each bloom in bloomDay:
+        if bloom <= day:
+            streak += 1
+            if streak == k:
+                bouquets += 1
+                streak = 0
+        else:
+            streak = 0
+
+    return bouquets >= m
+
+function minDays(bloomDay, m, k):
+    if m * k > length(bloomDay):
+        return -1
+
+    left = minimum value in bloomDay
+    right = maximum value in bloomDay
+    answer = -1
+
+    while left <= right:
+        mid = left + (right - left) / 2
+
+        if canMake(mid):
+            answer = mid
+            right = mid - 1
+        else:
+            left = mid + 1
+
+    return answer</pre>
+
+  <p><b>Full Working C++17 Code</b></p>
+  <pre>int minDays(vector<int>& bloomDay, int m, int k) {
+    long long need = 1LL * m * k;
+    if (need > (long long)bloomDay.size()) return -1;
+
+    int left = *min_element(bloomDay.begin(), bloomDay.end());
+    int right = *max_element(bloomDay.begin(), bloomDay.end());
+
+    auto canMake = [&](int day) -> bool {
+        int bouquets = 0;
+        int streak = 0;
+
+        for (int bloom : bloomDay) {
+            if (bloom <= day) {
+                streak++;
+                if (streak == k) {
+                    bouquets++;
+                    streak = 0;
+                }
+            } else {
+                streak = 0;
+            }
+        }
+
+        return bouquets >= m;
+    };
+
+    int ans = -1;
+    while (left <= right) {
+        int mid = left + (right - left) / 2;
+
+        if (canMake(mid)) {
+            ans = mid;
+            right = mid - 1;
+        } else {
+            left = mid + 1;
+        }
+    }
+
+    return ans;
+}</pre>
+
+  <p><b>Dry Run on a Meaningful Test Case</b></p>
+  <pre>Input: bloomDay = [7, 7, 7, 7, 12, 7, 7], m = 2, k = 3
+
+Initial:
+    left = 7
+    right = 12
+
+Step 1:
+    mid = 9
+    canMake(9):
+        bloomed by day 9 -> [7, 7, 7, 7, -, 7, 7]
+        streaks:
+            7,7,7 -> bouquet 1
+            7 -> break at 12
+            7,7 -> not enough
+        bouquets = 1
+    Result: false
+    Move left = 10
+
+Step 2:
+    left = 10
+    right = 12
+    mid = 11
+    canMake(11):
+        still same bloomed pattern as day 9
+        bouquets = 1
+    Result: false
+    Move left = 12
+
+Step 3:
+    left = 12
+    right = 12
+    mid = 12
+    canMake(12):
+        all flowers bloomed
+        one stretch of 7 flowers
+        bouquets = 7 / 3 = 2
+    Result: true
+    Save ans = 12
+    Move right = 11
+
+Final Result:
+    ans = 12</pre>
+
+  <p><b>How the Extreme Edge Case Is Handled</b></p>
+  <pre>Input: bloomDay = [1, 2, 3], m = 2, k = 2
+
+Check first:
+    m * k = 4
+    n = 3
+
+Since need > available, return -1 immediately.
+No binary search is needed.</pre>
+
+  <p><b>Time Complexity:</b> O(n log R), where <i>R = max(bloomDay) - min(bloomDay) + 1</i>. Each feasibility check scans the array once in O(n), and binary search needs O(log R) checks.</p>
+  <p><b>Space Complexity:</b> O(1). The feasibility check uses only a few counters, and no extra data structure is needed.</p>
+
+  <hr />
+
+  <div class="section">Final Intuition to Remember</div>
+  <p>
+    Whenever the problem asks for the <b>minimum day / smallest value / earliest threshold</b> and the validity of a candidate threshold only gets easier as the threshold increases, think <b>binary search on answer</b>. Then design a greedy check that answers: <i>“Can I make enough valid groups by this threshold?”</i>
+  </p>
+</body>
+</html>

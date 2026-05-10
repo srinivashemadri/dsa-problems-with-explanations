@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 153 — Find Minimum in Rotated Sorted Array</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 24px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 8px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #999;
+      margin: 22px 0;
+    }
+    .indent {
+      margin-left: 22px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 153 — Find Minimum in Rotated Sorted Array</div>
+
+  <div>
+    Based on the uploaded prompt for this problem :contentReference[oaicite:0]{index=0}, the task is to find the minimum element in a rotated sorted array with no duplicates.
+  </div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <div>
+    <b>Input:</b> An integer array <i>nums</i> that was originally sorted in strictly increasing order and then rotated at some unknown pivot.
+    The array contains <b>no duplicate values</b>.
+    <br/>
+    <b>Output:</b> Return the minimum element in the array.
+    <br/>
+    <b>Key Constraints:</b> The array is non-empty, sorted before rotation, and has distinct values. Those constraints are exactly what make binary search possible.
+    <br/>
+    <b>Edge Cases:</b>
+    <br/>
+    <span class="indent">• Array of size 1.</span><br/>
+    <span class="indent">• Array not rotated at all, for example <code>1 2 3 4</code>.</span><br/>
+    <span class="indent">• Fully rotated back to the original order, which is the same as not rotated.</span><br/>
+    <span class="indent">• Pivot at index 0 or at the last possible split position.</span><br/>
+    <span class="indent">• No duplicates means comparisons stay unambiguous; this is important because the duplicate version is harder.</span>
+  </div>
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <div>
+    This is really asking: <b>where is the smallest value located in a sorted array that has been rotated?</b>
+    The core challenge is not to sort, but to <b>detect which half must contain the minimum</b> using comparisons.
+    <br/>
+    <b>Category:</b> Binary Search on a rotated sorted array.
+    <br/>
+    <b>Mental Model:</b> Imagine two sorted halves glued together. One side is still in increasing order, and the other side contains the rotation break. The minimum is exactly at the break.
+    <br/>
+    <b>Common Trap:</b> Many candidates compare against the left boundary and get tangled in cases where the minimum is on the right. The cleanest invariant here is to compare <code>nums[mid]</code> with <code>nums[right]</code>.
+  </div>
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <div>
+    The naive idea is simple: scan the whole array and keep track of the smallest element.
+  </div>
+
+  <pre>minVal = nums[0]
+for each x in nums:
+    if x &lt; minVal:
+        minVal = x
+return minVal</pre>
+
+  <div>
+    <b>Time Complexity:</b> O(n), because every element is inspected once.
+    <br/>
+    <b>Space Complexity:</b> O(1), because only one variable is used.
+    <br/>
+    <b>Bottleneck:</b> We ignore the sorted structure completely, so we pay linear time even though the input has enough order to do better.
+  </div>
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <div class="section" style="font-size: 12pt; font-weight: bold; margin-top: 16px;">Test Case 1</div>
+  <div>
+    <b>Input:</b> 4 5 6 7 0 1 2
+    <br/>
+    <span class="indent">Array is split into two monotonic parts.</span>
+    <br/>
+    <b>Observation:</b> The minimum is in the right half because <code>0</code> is smaller than the elements before it.
+    <br/>
+    <b>Action:</b> Compare middle with right boundary. If <code>nums[mid] &gt; nums[right]</code>, the minimum must be to the right of mid.
+    <br/>
+    <b>Result:</b> We discard the left sorted part and keep narrowing toward the pivot.
+  </div>
+
+  <div class="section" style="font-size: 12pt; font-weight: bold; margin-top: 16px;">Test Case 2</div>
+  <div>
+    <b>Input:</b> 1 2 3 4 5
+    <br/>
+    <span class="indent">Already sorted, no rotation.</span>
+    <br/>
+    <b>Observation:</b> Every middle element will be less than or equal to the right boundary, so the minimum must stay on the left side, possibly at the current left boundary.
+    <br/>
+    <b>Action:</b> Move the right boundary leftward.
+    <br/>
+    <b>Result:</b> Search collapses to index 0, which is the answer.
+  </div>
+
+  <div class="section" style="font-size: 12pt; font-weight: bold; margin-top: 16px;">Test Case 3 (Edge Case)</div>
+  <div>
+    <b>Input:</b> 2
+    <br/>
+    <span class="indent">Single element.</span>
+    <br/>
+    <b>Observation:</b> There is nothing to compare.
+    <br/>
+    <b>Action:</b> Return the only value.
+    <br/>
+    <b>Result:</b> 2
+  </div>
+
+  <div>
+    The important pattern is this: in a rotated sorted array with distinct values, one half is always sorted. By comparing the middle element to the right boundary, we can tell which side still contains the rotation point. That is the key signal for binary search in future problems.
+  </div>
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <div>
+    This problem has one meaningful optimized solution: binary search.
+  </div>
+
+  <div class="section" style="font-size: 12pt; font-weight: bold; margin-top: 16px;">Optimized Solution</div>
+  <div>
+    <b>Idea:</b> Keep shrinking the search space while preserving the invariant that the minimum lies inside <code>[left, right]</code>.
+    <br/>
+    Use this rule:
+    <br/>
+    <span class="indent">• If <code>nums[mid] &gt; nums[right]</code>, the minimum is strictly to the right of <code>mid</code>.</span><br/>
+    <span class="indent">• Otherwise, the minimum is at <code>mid</code> or to its left.</span>
+    <br/>
+    This works because the right side tells us whether <code>mid</code> is in the left sorted block or the right sorted block.
+  </div>
+
+  <div>
+    <b>Pseudocode:</b>
+  </div>
+
+  <pre>left = 0
+right = n - 1
+
+while left &lt; right:
+    mid = left + (right - left) / 2
+
+    if nums[mid] &gt; nums[right]:
+        left = mid + 1
+    else:
+        right = mid
+
+return nums[left]</pre>
+
+  <div>
+    <b>Dry Run:</b>
+  </div>
+
+  <div class="indent">
+    <b>Input:</b> 4 5 6 7 0 1 2
+    <br/>
+    <b>Initial:</b> left = 0, right = 6
+    <br/>
+    <b>Pivot</b> is somewhere in the right side.
+    <br/>
+    <b>Step 1:</b> mid = 3, nums[mid] = 7, nums[right] = 2
+    <br/>
+    <span class="indent">7 &gt; 2, so the minimum must be to the right of mid.</span>
+    <br/>
+    <b>Update:</b> left = 4
+    <br/>
+    <b>Step 2:</b> left = 4, right = 6, mid = 5, nums[mid] = 1, nums[right] = 2
+    <br/>
+    <span class="indent">1 &lt;= 2, so the minimum is at mid or to the left of mid.</span>
+    <br/>
+    <b>Update:</b> right = 5
+    <br/>
+    <b>Step 3:</b> left = 4, right = 5, mid = 4, nums[mid] = 0, nums[right] = 1
+    <br/>
+    <span class="indent">0 &lt;= 1, so keep the left half.</span>
+    <br/>
+    <b>Update:</b> right = 4
+    <br/>
+    <b>Final Result:</b> left = right = 4, answer = 0
+  </div>
+
+  <div>
+    <b>Extreme Edge Case Handling:</b>
+    <br/>
+    <span class="indent">• For <code>1 2 3 4 5</code>, the condition <code>nums[mid] &gt; nums[right]</code> is never true, so the search keeps moving left until it reaches index 0.</span><br/>
+    <span class="indent">• For a single element array, the loop never runs and the only element is returned immediately.</span>
+  </div>
+
+  <div>
+    <b>Time Complexity:</b> O(log n), because each comparison cuts the search interval roughly in half.
+    <br/>
+    <b>Space Complexity:</b> O(1), because the algorithm uses only a few variables.
+    <br/>
+    <b>Algorithm Name:</b> Binary Search on Rotated Sorted Array.
+  </div>
+
+  <div class="section">Full Working C++17 Code</div>
+
+  <pre>int findMin(vector&lt;int&gt;&amp; nums) {
+    int left = 0, right = (int)nums.size() - 1;
+
+    while (left &lt; right) {
+        int mid = left + (right - left) / 2;
+
+        if (nums[mid] &gt; nums[right]) {
+            left = mid + 1;
+        } else {
+            right = mid;
+        }
+    }
+
+    return nums[left];
+}</pre>
+
+  <hr />
+
+  <div>
+    The signal to recognize in future problems is: <b>“a sorted array has been disturbed exactly once, and I need the boundary of the disturbance.”</b>
+    That almost always points to a binary search on the partition point rather than a full scan.
+  </div>
+</body>
+</html>

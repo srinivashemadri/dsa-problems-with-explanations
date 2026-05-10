@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>LeetCode 75 — Sort Colors</title>
+</head>
+<body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.8; max-width: 760px; margin: 40px auto; color: #000;">
+  <div style="text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 18px;">
+    LeetCode 75 — Sort Colors
+  </div>
+
+  <div style="font-size: 12pt;">
+    This follows the structured workflow you provided. :contentReference[oaicite:0]{index=0}
+  </div>
+
+  <hr>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">1) Problem Statement</div>
+  <p>
+    <b>Input:</b> An integer array <b>nums</b> containing only the values 0, 1, and 2, where 0, 1, and 2 represent red, white, and blue.
+  </p>
+  <p>
+    <b>Output:</b> Rearrange the array in-place so that all 0s come first, then all 1s, then all 2s.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The values belong to a fixed small domain {0, 1, 2}. That changes the game completely, because we do not need a general-purpose comparison sort. The main goal is to sort in-place with very low extra space.
+  </p>
+  <p>
+    <b>Edge Cases:</b> empty array, one-element array, already sorted input, reverse-sorted input, all elements equal, arrays containing only two of the three colors, and arrays where the interesting value appears in the middle after swaps.
+  </p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">2) Problem Understanding &amp; Approach Overview</div>
+  <p>
+    This is not really a “sorting” problem in the usual sense. It is a three-way partitioning problem: place every 0 on the left, every 2 on the right, and let 1s settle in the middle.
+  </p>
+  <p>
+    <b>Core challenge:</b> move elements into the correct region without losing track of unprocessed elements.
+  </p>
+  <p>
+    <b>Category:</b> array partitioning / in-place three-way partition / Dutch National Flag.
+  </p>
+  <p>
+    <b>Mental model:</b> imagine the array split into four regions: confirmed 0s, confirmed 1s, unknowns, and confirmed 2s. The algorithm’s job is to shrink the unknown region until nothing remains.
+  </p>
+  <p>
+    <b>Common trap:</b> after swapping a 2 to the end, many candidates incorrectly advance the middle pointer and skip re-checking the new value that was swapped in. That is the bug that breaks correctness.
+  </p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">3) Brute Force Solution</div>
+  <p>
+    The naive way is to use a standard sort and let the library arrange the values.
+  </p>
+
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+sort(nums.begin(), nums.end())</pre>
+
+  <p>
+    <b>Explanation:</b> This works because sorting puts all 0s before 1s and all 1s before 2s automatically.
+  </p>
+  <p>
+    <b>Time Complexity:</b> O(n log n). A comparison sort repeatedly compares and reorders elements.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1) extra space for many in-place sorts in practice, though the exact implementation depends on the library.
+  </p>
+  <p>
+    <b>Bottleneck:</b> the unnecessary general-purpose comparison machinery. Since the domain is only three values, we are paying more than needed.
+  </p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">4) Intuition Building</div>
+
+  <p>
+    <b>Test Case 1</b>
+  </p>
+  <div style="white-space: pre; font-family: 'Times New Roman', serif; font-size: 12pt;">
+Input: 2 0 2 1 1 0
+    Current state: mixed colors everywhere
+    Goal: 0s left, 1s middle, 2s right
+Action: separate the array into regions instead of doing a full comparison sort
+Result: the problem becomes a boundary-management problem
+  </div>
+
+  <p>
+    This case shows the real structure: 2s belong on the right, 0s belong on the left, and 1s are the buffer in the middle. A general sort is overkill.
+  </p>
+
+  <p>
+    <b>Test Case 2</b>
+  </p>
+  <div style="white-space: pre; font-family: 'Times New Roman', serif; font-size: 12pt;">
+Input: 0 1 2
+    Already in correct order
+    No element needs to cross a boundary
+Action: leave values where they are
+Result: 0 1 2
+  </div>
+
+  <p>
+    This confirms that the optimal solution must handle already-sorted input without doing extra work or creating instability.
+  </p>
+
+  <p>
+    <b>Test Case 3 (Edge Case)</b>
+  </p>
+  <div style="white-space: pre; font-family: 'Times New Roman', serif; font-size: 12pt;">
+Input: 2 2 2 2
+    Entire array is the same value
+    Every element belongs to the right region
+Action: keep pushing the right boundary left until all 2s are confirmed
+Result: 2 2 2 2
+  </div>
+
+  <p>
+    This edge case is important because it exposes the swap-with-end behavior. The algorithm must still terminate correctly even when every inspected value goes to the same region.
+  </p>
+
+  <p>
+    <b>Key insight:</b> because there are only three possible values, you only need to maintain three zones. That reduces the problem from “sorting” to “placing each value in one of three bins.”
+  </p>
+  <p>
+    <b>Signal for future problems:</b> whenever the values come from a tiny fixed set and the task is to group them in order, think of counting or three-way partitioning immediately.
+  </p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">5) Optimized Solution 1 — Intermediate: Counting Sort</div>
+  <p>
+    The first optimization is to count how many 0s, 1s, and 2s exist, then overwrite the array in that order. This eliminates comparison sorting completely.
+  </p>
+
+  <p><b>Pseudocode</b></p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+count0 = count1 = count2 = 0
+
+for each x in nums:
+    if x == 0: count0++
+    else if x == 1: count1++
+    else: count2++
+
+index = 0
+write count0 zeros into nums
+write count1 ones into nums
+write count2 twos into nums</pre>
+
+  <p>
+    <b>Time Complexity:</b> O(n). One pass counts the elements, and one pass writes them back.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). Only three counters are needed.
+  </p>
+  <p>
+    <b>What was eliminated:</b> all comparisons between arbitrary elements. We exploit the fixed value domain directly.
+  </p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">5) Optimized Solution 2 — Best Known: Dutch National Flag</div>
+  <p>
+    The fully optimal approach is the Dutch National Flag algorithm. It does the partitioning in one pass and in-place.
+  </p>
+  <p>
+    Maintain three pointers:
+    <br>
+    <b>low</b> = next position for 0,
+    <br>
+    <b>mid</b> = current inspection index,
+    <br>
+    <b>high</b> = next position for 2.
+  </p>
+  <p>
+    The invariant is:
+    <br>
+    [0 .. low-1] are all 0s,
+    <br>
+    [low .. mid-1] are all 1s,
+    <br>
+    [mid .. high] are unknown,
+    <br>
+    [high+1 .. n-1] are all 2s.
+  </p>
+
+  <p><b>Pseudocode</b></p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+low = 0
+mid = 0
+high = n - 1
+
+while mid <= high:
+    if nums[mid] == 0:
+        swap(nums[low], nums[mid])
+        low++
+        mid++
+    else if nums[mid] == 1:
+        mid++
+    else:
+        swap(nums[mid], nums[high])
+        high--</pre>
+
+  <p><b>Full Working C++17 Code</b></p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">
+void sortColors(vector&lt;int&gt;&amp; nums) {
+    int low = 0, mid = 0, high = static_cast&lt;int&gt;(nums.size()) - 1;
+
+    while (mid &lt;= high) {
+        if (nums[mid] == 0) {
+            swap(nums[low], nums[mid]);
+            ++low;
+            ++mid;
+        } else if (nums[mid] == 1) {
+            ++mid;
+        } else {
+            swap(nums[mid], nums[high]);
+            --high;
+        }
+    }
+}</pre>
+
+  <p><b>Dry Run</b></p>
+  <div style="white-space: pre; font-family: 'Times New Roman', serif; font-size: 12pt;">
+Input: 2 0 2 1 1 0
+
+Start:
+low = 0, mid = 0, high = 5
+Array: 2 0 2 1 1 0
+
+Step 1
+Pivot check: nums[mid] = 2
+Action: swap nums[mid] with nums[high]
+Array becomes: 0 0 2 1 1 2
+Update: high = 4, mid stays 0
+Reason: the new value at mid is unprocessed
+
+Step 2
+Pivot check: nums[mid] = 0
+Action: swap nums[low] with nums[mid]
+Array stays: 0 0 2 1 1 2
+Update: low = 1, mid = 1
+
+Step 3
+Pivot check: nums[mid] = 0
+Action: swap nums[low] with nums[mid]
+Array stays: 0 0 2 1 1 2
+Update: low = 2, mid = 2
+
+Step 4
+Pivot check: nums[mid] = 2
+Action: swap nums[mid] with nums[high]
+Array becomes: 0 0 1 1 2 2
+Update: high = 3, mid stays 2
+
+Step 5
+Pivot check: nums[mid] = 1
+Action: move mid forward
+Update: mid = 3
+
+Step 6
+Pivot check: nums[mid] = 1
+Action: move mid forward
+Update: mid = 4
+
+Stop:
+mid = 4, high = 3
+Unknown region is empty
+
+Final Result: 0 0 1 1 2 2
+  </div>
+
+  <p>
+    <b>Extreme Edge Case Handling:</b> for input like <b>2 2 2 2</b>, the algorithm keeps swapping each 2 with the current high boundary and shrinking the unknown region. It still finishes in linear time because each iteration either advances mid or decreases high.
+  </p>
+  <p>
+    <b>Time Complexity:</b> O(n). Every element is processed a constant number of times.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). Only three indices are used.
+  </p>
+  <p>
+    <b>Algorithm Name:</b> Dutch National Flag.
+  </p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Final Interview Takeaway</div>
+  <p>
+    The important shift is this: do not think “sort.” Think “partition by category.” Once you see the fixed three-value domain, the one-pass three-pointer method becomes the natural answer.
+  </p>
+</body>
+</html>

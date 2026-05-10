@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 152 - Maximum Product Subarray</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 24px;
+    }
+    h2 {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 0 0 10px 0;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 14px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 152 — Maximum Product Subarray</div>
+
+  <h2>Step 1 — Problem Statement</h2>
+  <p>
+    <b>Input:</b> An integer array <code>nums</code> containing at least one number.
+    You must find a contiguous subarray whose product is the largest among all possible contiguous subarrays.
+  </p>
+  <p>
+    <b>Output:</b> The maximum product value of any contiguous subarray.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The subarray must be contiguous, so you cannot pick elements independently. The array may contain positive numbers, negative numbers, and zero. The sign of the product matters just as much as the magnitude, because multiplying by a negative number can completely flip the ordering of values.
+  </p>
+  <p>
+    <b>Edge Cases:</b> a single element array, all positive values, all negative values, zeros splitting the array into independent segments, an odd number of negative values, and cases where the best answer is not the whole array but a middle segment.
+  </p>
+
+  <hr />
+
+  <h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+  <p>
+    This problem is really asking for the best product over every contiguous segment, not just the segment with the largest sum-like behavior. The core challenge is that multiplication with negative numbers is non-monotonic: a very small negative product can become the largest positive product after multiplying by another negative number.
+  </p>
+  <p>
+    <b>Category:</b> Dynamic Programming / Prefix-style state tracking.
+  </p>
+  <p>
+    <b>Mental model:</b> At each index, do not only ask “what is the best product ending here?” Also ask “what is the worst product ending here?” because the worst one may become the best one after the next negative number.
+  </p>
+  <p>
+    <b>Subtle trap:</b> Many candidates track only the maximum product so far. That fails on inputs like <code>-2 3 -4</code>, where the answer is <code>24</code>. The negative value that looked bad at one step becomes the key to the final answer.
+  </p>
+
+  <hr />
+
+  <h2>Step 3 — Brute Force Solution</h2>
+  <p>
+    The naive idea is to try every contiguous subarray, compute its product, and keep the maximum.
+  </p>
+
+  <pre>
+for i from 0 to n - 1:
+    product = 1
+    for j from i to n - 1:
+        product = product * nums[j]
+        answer = max(answer, product)
+return answer
+  </pre>
+
+  <p>
+    <b>Time Complexity:</b> O(n²). There are two nested loops, and each pair (i, j) defines one subarray.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). Only a few variables are used.
+  </p>
+  <p>
+    <b>Performance bottleneck:</b> The number of subarrays is quadratic, and recomputing products repeatedly is expensive.
+  </p>
+
+  <hr />
+
+  <h2>Step 4 — Intuition Building</h2>
+
+  <p><b>Test Case 1</b></p>
+  <pre>
+Input: 2 3 -2 4
+    Start with 2
+    Best ending here = 2
+    Worst ending here = 2
+
+At 3:
+    Extend previous best: 2 * 3 = 6
+    Start fresh: 3
+Action: choose max ending product = 6, min ending product = 3
+Result so far: 6
+
+At -2:
+    Negative flips roles:
+    Previous best * -2 = 6 * -2 = -12
+    Previous worst * -2 = 3 * -2 = -6
+Action: best ending here = max(-2, -12, -6) = -2
+        worst ending here = min(-2, -12, -6) = -12
+Result so far: 6
+
+At 4:
+    Best ending here = max(4, -2 * 4 = -8, -12 * 4 = -48) = 4
+    Worst ending here = min(4, -8, -48) = -48
+Action: global answer stays 6
+Result: 6
+  </pre>
+
+  <p><b>Test Case 2</b></p>
+  <pre>
+Input: -2 0 -1
+    Start with -2
+    Best ending here = -2
+    Worst ending here = -2
+
+At 0:
+    Zero breaks every product chain
+Action: best ending here = max(0, -2 * 0, -2 * 0) = 0
+        worst ending here = 0
+Result so far: 0
+
+At -1:
+    Starting fresh from -1 is better than extending zero
+Action: best ending here = max(-1, 0 * -1, 0 * -1) = 0
+        worst ending here = -1
+Result: 0
+  </pre>
+
+  <p><b>Test Case 3 (Edge Case)</b></p>
+  <pre>
+Input: -2 3 -4
+    At -2:
+        best = -2
+        worst = -2
+
+    At 3:
+        best = max(3, -2 * 3 = -6, -2 * 3 = -6) = 3
+        worst = min(3, -6, -6) = -6
+
+    At -4:
+        negative flips the meaning of best and worst
+        best = max(-4, 3 * -4 = -12, -6 * -4 = 24) = 24
+        worst = min(-4, -12, 24) = -12
+
+Action: keep both best and worst ending at each position
+Result: 24
+  </pre>
+
+  <p>
+    The pattern is clear: the product state must carry both extremes because a negative number can swap them. A zero also acts like a reset point, because any product passing through it becomes zero.
+  </p>
+  <p>
+    A future problem should trigger the same approach when the operation can flip order based on sign, parity, or reversal of comparison — especially when a “bad” intermediate state can later become the best answer.
+  </p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution</h2>
+  <p>
+    There is only one meaningful optimized solution here: dynamic tracking of the maximum and minimum product ending at each position.
+  </p>
+
+  <p>
+    <b>Idea:</b> For every index, maintain:
+  </p>
+  <p>
+    <code>maxEnd</code> = maximum product of a subarray ending at the current index<br/>
+    <code>minEnd</code> = minimum product of a subarray ending at the current index
+  </p>
+  <p>
+    When the current number is negative, the two values are swapped in effect, because multiplying by a negative reverses which one is useful.
+  </p>
+
+  <p><b>Clean Pseudocode:</b></p>
+  <pre>
+ans = nums[0]
+maxEnd = nums[0]
+minEnd = nums[0]
+
+for i from 1 to n - 1:
+    x = nums[i]
+    if x < 0:
+        swap(maxEnd, minEnd)
+
+    maxEnd = max(x, maxEnd * x)
+    minEnd = min(x, minEnd * x)
+
+    ans = max(ans, maxEnd)
+
+return ans
+  </pre>
+
+  <p><b>Full Working C++17 Code:</b></p>
+  <pre>
+int maxProduct(vector&lt;int&gt;&amp; nums) {
+    long long maxEnd = nums[0];
+    long long minEnd = nums[0];
+    long long ans = nums[0];
+
+    for (int i = 1; i &lt; (int)nums.size(); ++i) {
+        long long x = nums[i];
+
+        if (x &lt; 0) {
+            swap(maxEnd, minEnd);
+        }
+
+        maxEnd = max(x, maxEnd * x);
+        minEnd = min(x, minEnd * x);
+
+        ans = max(ans, maxEnd);
+    }
+
+    return (int)ans;
+}
+  </pre>
+
+  <p><b>Dry Run on a Meaningful Test Case:</b></p>
+  <pre>
+Input: -2 3 -4
+
+Initial:
+    maxEnd = -2
+    minEnd = -2
+    ans = -2
+
+Step 1: x = 3
+    x is positive, no swap
+    maxEnd = max(3, -2 * 3 = -6) = 3
+    minEnd = min(3, -2 * 3 = -6) = -6
+    ans = max(-2, 3) = 3
+
+Step 2: x = -4
+    x is negative, swap maxEnd and minEnd
+    maxEnd = -6
+    minEnd = 3
+
+    maxEnd = max(-4, -6 * -4 = 24) = 24
+    minEnd = min(-4, 3 * -4 = -12) = -12
+    ans = max(3, 24) = 24
+
+Final Result: 24
+  </pre>
+
+  <p><b>How the zero edge case is handled:</b> When <code>x = 0</code>, both <code>maxEnd</code> and <code>minEnd</code> become 0, which naturally resets the chain. The next non-zero value can start a fresh subarray.
+  </p>
+
+  <p><b>Time Complexity:</b> O(n). The array is scanned once, and each step does constant work.</p>
+  <p><b>Space Complexity:</b> O(1). Only a fixed number of variables are used.</p>
+  <p><b>Algorithm Name:</b> Dynamic Programming with max/min tracking.</p>
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>LeetCode 73 - Set Matrix Zeroes</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 8px 0;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #aaa;
+      margin: 22px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div class="title">LeetCode 73 — Set Matrix Zeroes</div>
+
+<h2>Step 1 — Problem Statement</h2>
+<p><span class="label">Input:</span> A 2D matrix of size <b>m × n</b> containing integers.</p>
+<p><span class="label">Output:</span> Modify the matrix in-place so that if any cell is <b>0</b>, its entire row and its entire column become <b>0</b>.</p>
+<p><span class="label">Key Constraints:</span> The matrix must be updated in-place, so memory usage matters. The real challenge is avoiding accidental overwrites while still remembering which rows and columns need to be zeroed.</p>
+<p><span class="label">Edge Cases:</span></p>
+<ul>
+  <li>A single row or a single column.</li>
+  <li>All elements already zero.</li>
+  <li>No zero at all.</li>
+  <li>Zero in the first row or first column, because those cells are often reused as markers in the optimal solution.</li>
+  <li>Multiple zeroes that intersect the same row or column.</li>
+</ul>
+<p>The subtle difficulty is that once you start setting values to zero, you may lose the original information about where the zeroes were. The solution must preserve that information somehow.</p>
+
+<hr>
+
+<h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+<p>This problem is really asking: <b>identify every row and column that contains at least one zero, then zero them out</b>.</p>
+<p><b>Core challenge:</b> remember the affected rows and columns without corrupting the scan process.</p>
+<p><b>Category:</b> Matrix / In-place marking / Array simulation.</p>
+<p><b>Mental model:</b> Think of every zero as a signal that “infects” its row and column. The main issue is to record those signals cleanly before applying the infection.</p>
+<p><b>Common trap:</b> candidates directly zero rows and columns while scanning, which creates cascading false zeroes and destroys correctness.</p>
+
+<hr>
+
+<h2>Step 3 — Brute Force Solution</h2>
+<p>The naive idea is: for every cell that is zero, immediately set its whole row and column to zero. But that changes the matrix while we are still reading it, so it can produce extra zeroes that were not in the original input.</p>
+
+<pre>
+Pseudocode:
+for each cell (i, j) in matrix:
+    if matrix[i][j] == 0:
+        mark entire row i to be zeroed
+        mark entire column j to be zeroed
+
+apply all row zero marks
+apply all column zero marks
+</pre>
+
+<p><b>Why this is broken if done directly:</b> if you zero a row early, later scans will see those newly created zeroes and incorrectly treat them as original zeroes.</p>
+
+<p>A safer brute force version uses extra arrays:</p>
+
+<pre>
+Pseudocode:
+create row array of size m, initialized to false
+create col array of size n, initialized to false
+
+first pass:
+    for each cell (i, j):
+        if matrix[i][j] == 0:
+            row[i] = true
+            col[j] = true
+
+second pass:
+    for each cell (i, j):
+        if row[i] == true OR col[j] == true:
+            matrix[i][j] = 0
+</pre>
+
+<p><b>Time Complexity:</b> O(mn). We scan the matrix twice, and each cell is processed in constant time.</p>
+<p><b>Space Complexity:</b> O(m + n). We store which rows and columns must be zeroed.</p>
+<p><b>Performance bottleneck:</b> the extra memory for row and column tracking. That is acceptable, but the follow-up usually asks for better space usage.</p>
+
+<hr>
+
+<h2>Step 4 — Intuition Building</h2>
+
+<h3>Test Case 1</h3>
+<pre>
+Input: 1 2 3
+       4 0 6
+       7 8 9
+
+    The zero is at (1, 1)
+    So row 1 and column 1 must become zero
+
+Action:
+    Mark row 1
+    Mark column 1
+
+Result:
+    1 0 3
+    0 0 0
+    7 0 9
+</pre>
+<p>Here, the key observation is that the zero does not only affect itself. It creates a cross-shaped impact: one full row and one full column.</p>
+
+<h3>Test Case 2</h3>
+<pre>
+Input: 1 2
+       3 4
+
+    No zero exists
+    Nothing should change
+
+Action:
+    Scan entire matrix
+    No row or column gets marked
+
+Result:
+    1 2
+    3 4
+</pre>
+<p>This case shows why the algorithm must be based only on original zeroes. If we accidentally created new zeroes while scanning, we would ruin the answer.</p>
+
+<h3>Test Case 3</h3>
+<pre>
+Input: 0 2 3
+       4 5 6
+       7 8 0
+
+    Zeroes are at (0, 0) and (2, 2)
+    First row and first column are special because they can be both data and markers
+
+Action:
+    Mark row 0, row 2
+    Mark col 0, col 2
+
+Result:
+    0 0 0
+    0 5 0
+    0 0 0
+</pre>
+<p>This case reveals the real optimization idea: the first row and first column can store markers, but they themselves also need independent protection because they may already contain zeroes.</p>
+
+<p><b>Rare edge case insight:</b> if the first row has a zero, the whole first row must become zero. If the first column has a zero, the whole first column must become zero. The optimal solution must track these two facts separately.</p>
+
+<p><b>Signal to recognize this pattern in future problems:</b> when a matrix asks you to update rows and columns based on cell values, and in-place + low memory is required, think of using the first row and first column as marker storage.</p>
+
+<hr>
+
+<h2>Step 5 — Optimized Solution 1 (Intermediate)</h2>
+<p>This optimization removes the naive row/column arrays from the brute force version and still keeps correctness by using a separate marker structure only conceptually. In practice, this is the same idea as the safe brute force approach: collect all rows and columns first, then apply zeroes.</p>
+
+<p><b>What is eliminated:</b> direct mutation during scanning.</p>
+
+<pre>
+Pseudocode:
+rowZero = boolean array of size m
+colZero = boolean array of size n
+
+first pass:
+    for each cell (i, j):
+        if matrix[i][j] == 0:
+            rowZero[i] = true
+            colZero[j] = true
+
+second pass:
+    for each cell (i, j):
+        if rowZero[i] == true OR colZero[j] == true:
+            matrix[i][j] = 0
+</pre>
+
+<p><b>Time Complexity:</b> O(mn). Two linear passes over the matrix.</p>
+<p><b>Space Complexity:</b> O(m + n). The marker arrays store row and column zero information.</p>
+
+<hr>
+
+<h2>Step 5 — Optimized Solution 2 (Best Known / Fully Optimal)</h2>
+<p>The further insight is that we can use the <b>first row</b> and <b>first column</b> of the matrix itself as the marker arrays. That reduces extra memory to O(1).</p>
+
+<p>However, the first row and first column are also part of the answer, so we must separately remember whether they originally contained any zero. Two boolean variables solve that:</p>
+<ul>
+  <li><b>firstRowZero</b>: whether the first row should be zeroed.</li>
+  <li><b>firstColZero</b>: whether the first column should be zeroed.</li>
+</ul>
+
+<pre>
+Pseudocode:
+firstRowZero = false
+firstColZero = false
+
+1) Check first row:
+    if any cell in row 0 is 0:
+        firstRowZero = true
+
+2) Check first column:
+    if any cell in col 0 is 0:
+        firstColZero = true
+
+3) Use first row and first column as markers:
+    for i from 1 to m-1:
+        for j from 1 to n-1:
+            if matrix[i][j] == 0:
+                matrix[i][0] = 0
+                matrix[0][j] = 0
+
+4) Zero marked rows:
+    for i from 1 to m-1:
+        if matrix[i][0] == 0:
+            set entire row i to 0
+
+5) Zero marked columns:
+    for j from 1 to n-1:
+        if matrix[0][j] == 0:
+            set entire column j to 0
+
+6) Finally handle first row and first column:
+    if firstRowZero:
+        set row 0 to 0
+    if firstColZero:
+        set column 0 to 0
+</pre>
+
+<p><b>Algorithm name:</b> In-place marker technique using first row and first column.</p>
+
+<p><b>Why this works:</b> every non-first-row and non-first-column cell can safely write its row/column marker into the matrix boundary. Later, those markers tell us exactly which rows and columns must be zeroed. The first row and first column are treated separately so their original state is not lost.</p>
+
+<p><b>Time Complexity:</b> O(mn). We scan the matrix a constant number of times, and each cell is visited at most a few times.</p>
+<p><b>Space Complexity:</b> O(1). Only two boolean variables are used beyond the input matrix.</p>
+
+<p><b>Dry Run:</b></p>
+<pre>
+Input:
+1 1 1
+1 0 1
+1 1 1
+
+Step 1: firstRowZero?
+    first row = 1 1 1
+    no zero → false
+
+Step 2: firstColZero?
+    first column = 1, 1, 1
+    no zero → false
+
+Step 3: mark using first row / first column
+    cell (1, 1) = 0
+    mark matrix[1][0] = 0
+    mark matrix[0][1] = 0
+
+Matrix after marking:
+1 0 1
+0 0 1
+1 1 1
+
+Step 4: zero marked rows
+    row 1 has marker matrix[1][0] = 0
+    zero row 1
+
+Matrix becomes:
+1 0 1
+0 0 0
+1 1 1
+
+Step 5: zero marked columns
+    column 1 has marker matrix[0][1] = 0
+    zero column 1
+
+Matrix becomes:
+1 0 1
+0 0 0
+1 0 1
+
+Step 6: first row / first column
+    firstRowZero = false
+    firstColZero = false
+
+Final Result:
+1 0 1
+0 0 0
+1 0 1
+</pre>
+
+<p><b>Extreme edge case handled correctly:</b></p>
+<pre>
+Input:
+0 2 3
+4 5 6
+7 8 0
+
+firstRowZero = true   because matrix[0][0] = 0
+firstColZero = true   because matrix[0][0] = 0 also affects the first column
+
+During marking:
+    (2, 2) = 0 marks row 2 and column 2
+
+Final result:
+0 0 0
+0 5 0
+0 0 0
+</pre>
+
+<p>Notice how the first row and first column are not accidentally overwritten too early. That is exactly why the two boolean flags are necessary.</p>
+
+<p><b>C++17 Code:</b></p>
+<pre>
+void setZeroes(vector<vector<int>>& matrix) {
+    int m = matrix.size();
+    int n = matrix[0].size();
+
+    bool firstRowZero = false;
+    bool firstColZero = false;
+
+    for (int j = 0; j < n; j++) {
+        if (matrix[0][j] == 0) {
+            firstRowZero = true;
+            break;
+        }
+    }
+
+    for (int i = 0; i < m; i++) {
+        if (matrix[i][0] == 0) {
+            firstColZero = true;
+            break;
+        }
+    }
+
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            if (matrix[i][j] == 0) {
+                matrix[i][0] = 0;
+                matrix[0][j] = 0;
+            }
+        }
+    }
+
+    for (int i = 1; i < m; i++) {
+        if (matrix[i][0] == 0) {
+            for (int j = 1; j < n; j++) {
+                matrix[i][j] = 0;
+            }
+        }
+    }
+
+    for (int j = 1; j < n; j++) {
+        if (matrix[0][j] == 0) {
+            for (int i = 1; i < m; i++) {
+                matrix[i][j] = 0;
+            }
+        }
+    }
+
+    if (firstRowZero) {
+        for (int j = 0; j < n; j++) {
+            matrix[0][j] = 0;
+        }
+    }
+
+    if (firstColZero) {
+        for (int i = 0; i < m; i++) {
+            matrix[i][0] = 0;
+        }
+    }
+}
+</pre>
+
+<p><b>Final interview takeaway:</b> the moment you see “modify matrix in-place,” “zero rows and columns,” and “avoid extra space,” your mind should jump to the first row/first column marker trick.</p>
+
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre.code {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #000;
+      margin: 18px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="title">Why initialize <i>cand1 = 0</i>, <i>cand2 = 1</i>? — Deep Explanation</div>
+
+<div class="section">Core Answer (Short &amp; Honest)</div>
+<p>
+There is <b>no real algorithmic logic</b> behind choosing <b>cand1 = 0</b> and <b>cand2 = 1</b>.
+These are just <b>dummy initial values</b> to make the variables valid before the loop starts.
+</p>
+
+<p>
+The algorithm does <b>NOT depend</b> on these initial values at all.
+What actually matters is the <b>counts</b>, not the candidate values initially.
+</p>
+
+<hr>
+
+<div class="section">Why It Still Works (Important Insight)</div>
+
+<p>
+Look at the decision flow carefully:
+</p>
+
+<pre class="code">if (x == cand1)        → use cand1
+else if (x == cand2)   → use cand2
+else if (count1 == 0)  → replace cand1
+else if (count2 == 0)  → replace cand2
+else                   → decrement both</pre>
+
+<p>
+Notice something critical:
+</p>
+
+<p>
+<b>When count1 == 0 or count2 == 0, we overwrite the candidate.</b>
+</p>
+
+<p>
+That means:
+</p>
+
+<ul>
+  <li>Initial values are temporary placeholders</li>
+  <li>They get replaced as soon as real data arrives</li>
+  <li>So correctness does NOT depend on them</li>
+</ul>
+
+<hr>
+
+<div class="section">Step-by-Step Reality Check</div>
+
+<p><b>Test Case</b></p>
+
+<p>
+Input: 5 5 5 2 2 2
+</p>
+
+<p>
+Initial state:
+</p>
+
+<pre class="code">cand1 = 0, count1 = 0
+cand2 = 1, count2 = 0</pre>
+
+<p>
+Now process:
+</p>
+
+<p>
+x = 5<br/>
+→ count1 == 0 → cand1 = 5, count1 = 1
+</p>
+
+<p>
+Immediately, the fake value <b>0 is gone</b>.
+</p>
+
+<p>
+From here onward, algorithm behaves correctly.
+</p>
+
+<hr>
+
+<div class="section">What If nums Contains 0 or 1?</div>
+
+<p>
+Even if input contains 0 or 1:
+</p>
+
+<ul>
+  <li>If count is 0 → candidate gets replaced anyway</li>
+  <li>If count &gt; 0 → comparison works normally</li>
+</ul>
+
+<p>
+So there is <b>no collision issue</b>.
+</p>
+
+<hr>
+
+<div class="section">The Real Principle (This Is What Matters)</div>
+
+<p>
+The algorithm relies on:
+</p>
+
+<ul>
+  <li>Counts becoming zero</li>
+  <li>Candidates being replaced dynamically</li>
+  <li>Final verification pass</li>
+</ul>
+
+<p>
+<b>Not on initial candidate values.</b>
+</p>
+
+<hr>
+
+<div class="section">Better / Cleaner Initialization (Recommended in Interviews)</div>
+
+<p>
+To avoid confusion, many engineers prefer writing it like this:
+</p>
+
+<pre class="code">int cand1 = 0, cand2 = 0;
+int count1 = 0, count2 = 0;</pre>
+
+<p>
+Or even conceptually:
+</p>
+
+<p>
+<b>"Candidates are undefined until counts become non-zero."</b>
+</p>
+
+<hr>
+
+<div class="section">Subtle Trap Most Candidates Miss</div>
+
+<p>
+People think:
+</p>
+
+<p>
+<b>"Initial candidate values must be meaningful."</b>
+</p>
+
+<p>
+That is wrong.
+</p>
+
+<p>
+What actually matters:
+</p>
+
+<p>
+<b>The moment count becomes 0 → candidate loses identity → can be replaced.</b>
+</p>
+
+<hr>
+
+<div class="section">Final Takeaway</div>
+
+<p>
+cand1 = 0 and cand2 = 1 are just <b>placeholders</b>.
+</p>
+
+<p>
+The algorithm works because:
+</p>
+
+<ul>
+  <li>Counts control validity</li>
+  <li>Candidates are replaceable</li>
+  <li>Final pass guarantees correctness</li>
+</ul>
+
+<p>
+If you understand this, you understand Boyer-Moore at a deep level.
+</p>
+
+</body>
+</html>

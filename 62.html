@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 62 — Unique Paths</title>
+  <style>
+    body {
+      font-family: "Times New Roman", serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    h2 {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 0 0 12px 0;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 14px 0;
+    }
+    .smallnote {
+      font-size: 11pt;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #000;
+      margin: 20px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="title">LeetCode 62 — Unique Paths</div>
+  <p class="smallnote">Prepared using the uploaded formatting instructions :contentReference[oaicite:0]{index=0}.</p>
+
+  <hr />
+
+  <h2>Step 1 — Problem Statement</h2>
+  <p>
+    <span class="label">Input:</span> You are given two integers <b>m</b> and <b>n</b>, which represent the number of rows and columns in a grid.
+    A robot starts at the top-left cell and wants to reach the bottom-right cell.
+    On each move, it may only go <b>right</b> or <b>down</b>.
+  </p>
+  <p>
+    <span class="label">Output:</span> Return the number of distinct paths from the top-left corner to the bottom-right corner.
+  </p>
+  <p>
+    <span class="label">Key Constraints:</span> Every valid path has exactly <b>m - 1</b> downward moves and <b>n - 1</b> rightward moves.
+    The order of those moves is what creates different paths.
+    This means the problem is fundamentally a counting problem, not a shortest-path problem.
+  </p>
+  <p>
+    <span class="label">Edge Cases:</span> A one-row grid or a one-column grid has exactly one path, because there is only one possible direction to move.
+    The smallest grid, <b>1 x 1</b>, also has exactly one path: the robot is already at the destination.
+    A common trap is forgetting that different move orders count as different paths even though the total number of moves is the same.
+  </p>
+
+  <hr />
+
+  <h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+  <p>
+    This problem is really asking: <b>in how many different ways can we arrange a fixed number of right moves and down moves?</b>
+    The story is just a grid wrapper around a counting structure.
+  </p>
+  <p>
+    The core algorithmic challenge is that a naive recursive solution recomputes the same subproblems many times.
+    This is a classic <b>Dynamic Programming</b> problem.
+  </p>
+  <p>
+    The mental model should be: <b>every cell collects paths from the cell above and the cell to the left</b>.
+    Once you see that, the grid becomes a table of accumulated counts.
+  </p>
+  <p>
+    The subtle trap is to think in terms of “all possible route shapes” and branch recursively without remembering results.
+    That explodes into repeated work very quickly.
+  </p>
+
+  <hr />
+
+  <h2>Step 3 — Brute Force Solution</h2>
+  <p>
+    The most direct idea is to recursively move right or down until reaching the destination.
+    If we go out of bounds, that path contributes zero.
+    If we reach the bottom-right cell, that path contributes one.
+  </p>
+
+  <pre>
+function dfs(i, j):
+    if i == m - 1 and j == n - 1:
+        return 1
+    if i >= m or j >= n:
+        return 0
+
+    rightWays = dfs(i, j + 1)
+    downWays  = dfs(i + 1, j)
+
+    return rightWays + downWays
+
+answer = dfs(0, 0)
+  </pre>
+
+  <p>
+    <span class="label">Time Complexity:</span> <b>O(2^(m+n))</b> in the recursion-tree sense, because each state branches into two choices and the same subproblems are revisited many times.
+    A more precise way to see the explosion is that the number of distinct paths itself is combinatorial, and brute force explores an exponentially large tree.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> <b>O(m+n)</b> for the recursion stack, because the deepest path can move at most <b>m - 1</b> times down and <b>n - 1</b> times right.
+  </p>
+  <p>
+    <span class="label">Performance Bottleneck:</span> The same cell is solved again and again from different parent paths.
+    For example, the count of paths to a middle cell can be recomputed many times.
+  </p>
+
+  <hr />
+
+  <h2>Step 4 — Intuition Building</h2>
+
+  <h3>Test Case 1</h3>
+  <p><span class="label">Input:</span> 1 x 1</p>
+  <p>
+    Only one cell exists.
+    The robot starts at the destination, so no movement is needed.
+  </p>
+  <p><span class="label">Action:</span> Return 1 immediately.</p>
+  <p><span class="label">Result:</span> 1</p>
+
+  <h3>Test Case 2</h3>
+  <p><span class="label">Input:</span> 2 x 2</p>
+  <p>
+    A valid path must contain one right move and one down move.
+    The only difference is the order.
+  </p>
+  <p><span class="label">Action:</span> Count the move arrangements: RD and DR.</p>
+  <p><span class="label">Result:</span> 2</p>
+
+  <h3>Test Case 3</h3>
+  <p><span class="label">Input:</span> 3 x 7</p>
+  <p>
+    Every path has exactly 2 down moves and 6 right moves.
+    A brute force recursion would repeatedly count the same inner cells from many routes.
+  </p>
+  <p>
+    <span class="label">Observation:</span> The number of ways to reach any cell depends only on the cell above it and the cell to its left.
+    That means each cell can store its answer once.
+  </p>
+  <p>
+    <span class="label">Action:</span> Build the answer row by row using previous counts instead of exploring every route separately.
+  </p>
+  <p><span class="label">Result:</span> The answer grows through a stable pattern instead of repeated recursion.</p>
+
+  <p>
+    <span class="label">Extreme Edge Case:</span> For any <b>1 x n</b> or <b>m x 1</b> grid, the optimal method must still return 1.
+    A naive recursion handles this only after exploring the structure; the DP solution gets it naturally from the base row/column initialization.
+  </p>
+  <p>
+    <span class="label">Signal for the future:</span> When a problem asks for the number of ways to reach a destination using only restricted monotonic moves, think about a grid DP where each state is the sum of its direct predecessors.
+  </p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution 1 (Intermediate): 2D DP</h2>
+  <p>
+    The first optimization is to store the answer for each cell exactly once.
+    Let <b>dp[i][j]</b> be the number of unique paths to cell <b>(i, j)</b>.
+    Then:
+    <br />
+    <b>dp[i][j] = dp[i - 1][j] + dp[i][j - 1]</b>
+    <br />
+    because every path to <b>(i, j)</b> must come either from above or from the left.
+  </p>
+
+  <pre>
+Initialize a 2D table dp[m][n]
+
+For every cell in the first row:
+    dp[0][j] = 1
+
+For every cell in the first column:
+    dp[i][0] = 1
+
+For i from 1 to m - 1:
+    For j from 1 to n - 1:
+        dp[i][j] = dp[i - 1][j] + dp[i][j - 1]
+
+Return dp[m - 1][n - 1]
+  </pre>
+
+  <p>
+    <span class="label">Time Complexity:</span> <b>O(mn)</b>, because every cell is filled once.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> <b>O(mn)</b>, because the full table is stored.
+  </p>
+  <p>
+    <span class="label">What was eliminated:</span> All repeated recursive recomputation.
+    Each subproblem is solved once and reused.
+  </p>
+
+  <h2>Step 5 — Optimized Solution 2 (Best Known / Fully Optimal): 1D DP</h2>
+  <p>
+    The further insight is that to compute the current row, you do not need the entire grid.
+    You only need the previous row values and the current row being built.
+    That lets us compress the 2D table into one array.
+  </p>
+  <p>
+    Here, <b>dp[j]</b> means: number of ways to reach column <b>j</b> in the current row.
+    Before updating <b>dp[j]</b>, it still holds the value from the row above.
+    After updating, it becomes the current row value.
+  </p>
+
+  <pre>
+int uniquePaths(int m, int n) {
+    vector<long long> dp(n, 1);
+
+    for (int i = 1; i < m; ++i) {
+        for (int j = 1; j < n; ++j) {
+            dp[j] += dp[j - 1];
+        }
+    }
+
+    return static_cast<int>(dp[n - 1]);
+}
+  </pre>
+
+  <p>
+    <span class="label">Dry Run:</span> Take <b>m = 3</b>, <b>n = 7</b>.
+  </p>
+
+  <pre>
+Initial dp:
+1 1 1 1 1 1 1
+
+Row 2:
+j = 1 -> dp[1] = 1 + 1 = 2
+dp: 1 2 1 1 1 1 1
+
+j = 2 -> dp[2] = 1 + 2 = 3
+dp: 1 2 3 1 1 1 1
+
+j = 3 -> dp[3] = 1 + 3 = 4
+dp: 1 2 3 4 1 1 1
+
+j = 4 -> dp[4] = 1 + 4 = 5
+dp: 1 2 3 4 5 1 1
+
+j = 5 -> dp[5] = 1 + 5 = 6
+dp: 1 2 3 4 5 6 1
+
+j = 6 -> dp[6] = 1 + 6 = 7
+dp: 1 2 3 4 5 6 7
+
+Row 3:
+j = 1 -> dp[1] = 2 + 1 = 3
+dp: 1 3 3 4 5 6 7
+
+j = 2 -> dp[2] = 3 + 3 = 6
+dp: 1 3 6 4 5 6 7
+
+j = 3 -> dp[3] = 4 + 6 = 10
+dp: 1 3 6 10 5 6 7
+
+j = 4 -> dp[4] = 5 + 10 = 15
+dp: 1 3 6 10 15 6 7
+
+j = 5 -> dp[5] = 6 + 15 = 21
+dp: 1 3 6 10 15 21 7
+
+j = 6 -> dp[6] = 7 + 21 = 28
+dp: 1 3 6 10 15 21 28
+
+Final Result: 28
+  </pre>
+
+  <p>
+    <span class="label">Edge Case Handling:</span> For <b>1 x n</b>, the outer loop never runs and the answer stays 1.
+    For <b>m x 1</b>, the inner loop never runs and the answer also stays 1.
+    The initialization already captures the correct base case.
+  </p>
+  <p>
+    <span class="label">Time Complexity:</span> <b>O(mn)</b>, because every cell's value is computed once through a constant-time update.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> <b>O(n)</b>, because only one row of DP state is stored.
+  </p>
+  <p>
+    <span class="label">Algorithm Name:</span> Dynamic Programming with State Compression.
+  </p>
+
+  <hr />
+
+  <h2>Final Takeaway</h2>
+  <p>
+    The key insight is that the robot's path-count to each cell is built from two immediate predecessors.
+    Once you recognize that structure, the brute force recursion collapses into DP, and the 1D version gives the cleanest interview solution.
+  </p>
+
+</body>
+</html>

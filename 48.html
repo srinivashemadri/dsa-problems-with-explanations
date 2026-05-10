@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 48 - Rotate Image</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 8px;
+    }
+    .subsection {
+      font-size: 12pt;
+      font-weight: bold;
+      margin-top: 18px;
+      margin-bottom: 4px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 14px 0;
+    }
+    .note {
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 48 — Rotate Image</div>
+
+  <p>
+    Formatted to match your requested LC template :contentReference[oaicite:0]{index=0}
+  </p>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> A square matrix <i>matrix</i> of size <i>n x n</i>, where each cell contains an integer. The matrix must be rotated 90 degrees clockwise.
+  </p>
+  <p>
+    <b>Output:</b> The same matrix after rotation, modified in place. No extra 2D matrix should be used for the final answer.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The matrix is square, so every row has the same length as the number of rows. The important follow-up is in-place rotation, which forces us to think about index transformations instead of building a fresh answer matrix.
+  </p>
+  <p>
+    <b>Edge Cases:</b> <br/>
+    - <i>n = 1</i>: a 1 x 1 matrix stays unchanged.<br/>
+    - <i>n = 2</i>: the smallest non-trivial rotation, useful for checking index logic.<br/>
+    - All values identical: the structure still matters even if the visual result looks unchanged.<br/>
+    - Already “symmetric-looking” matrices can still change after rotation, so do not confuse transpose with rotation.
+  </p>
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    This problem is really asking you to remap every element from position <i>(i, j)</i> to its rotated position <i>(j, n - 1 - i)</i>. The story is just a matrix rotation; the core challenge is to do it without allocating a second matrix.
+  </p>
+  <p>
+    The category is <b>matrix manipulation / in-place transformation</b>.
+  </p>
+  <p>
+    The mental model is simple: a clockwise rotation can be decomposed into two easier moves — first swap rows with columns through a transpose, then reverse every row. That composition produces the exact 90-degree clockwise effect.
+  </p>
+  <p>
+    The subtle trap is to try to move elements one by one in a cycle without fully reasoning about four-way placements, which often causes overwrites or off-by-one mistakes. Another common mistake is doing only transpose and forgetting the row reversal.
+  </p>
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The most naive idea is to create a new <i>n x n</i> matrix, place each value directly into its rotated location, and then copy it back if needed.
+  </p>
+
+  <pre>
+for i from 0 to n - 1:
+    for j from 0 to n - 1:
+        newMatrix[j][n - 1 - i] = matrix[i][j]
+
+copy newMatrix back into matrix
+  </pre>
+
+  <p>
+    Each element is visited once, so the time complexity is <b>O(n^2)</b>. The extra matrix also takes <b>O(n^2)</b> space. The bottleneck is the additional 2D storage, which violates the in-place requirement.
+  </p>
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <div class="subsection">Test Case 1</div>
+  <pre>
+Input: 1
+    Single cell matrix
+    Rotation does not change position
+Action: Leave it as is
+Result: 1
+  </pre>
+
+  <div class="subsection">Test Case 2</div>
+  <pre>
+Input:
+1 2
+3 4
+    Element (0, 0) moves to (0, 1)
+    Element (0, 1) moves to (1, 1)
+    Element (1, 0) moves to (0, 0)
+    Element (1, 1) moves to (1, 0)
+Action: Rotate 90 degrees clockwise
+Result:
+3 1
+4 2
+  </pre>
+
+  <div class="subsection">Test Case 3</div>
+  <pre>
+Input:
+1 2 3
+4 5 6
+7 8 9
+    Direct rotation would map:
+    (0, 0) -> (0, 2)
+    (0, 1) -> (1, 2)
+    (0, 2) -> (2, 2)
+    (1, 0) -> (0, 1)
+    ...
+    Doing this directly in-place is risky because values get overwritten
+Action:
+    First transpose:
+    1 4 7
+    2 5 8
+    3 6 9
+
+    Then reverse each row:
+    7 4 1
+    8 5 2
+    9 6 3
+Result:
+7 4 1
+8 5 2
+9 6 3
+  </pre>
+
+  <p>
+    The inefficiency in the brute-force thinking is that direct relocation forces you to manage overwritten values. The cleaner structure is to exploit a decomposition: transpose turns rows into columns, and reversing each row completes the clockwise turn.
+  </p>
+  <p>
+    The signal that should immediately trigger this same approach is: <b>“rotate a square matrix in place”</b>. That phrasing almost always means “transpose + reverse” or an equivalent layered swap strategy.
+  </p>
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    There is one fully optimal in-place approach here: <b>transpose the matrix, then reverse every row</b>. This is the standard interview-grade solution and it avoids extra 2D memory.
+  </p>
+
+  <p>
+    <b>Why it works:</b> Transpose converts <i>matrix[i][j]</i> into <i>matrix[j][i]</i>, which flips the matrix across its main diagonal. After that, reversing each row shifts the elements into their final clockwise-rotated positions.
+  </p>
+
+  <div class="subsection">Optimized Solution</div>
+
+  <pre>
+void rotate(vector&lt;vector&lt;int&gt;&gt;&amp; matrix) {
+    int n = matrix.size();
+
+    // Step 1: Transpose the matrix
+    for (int i = 0; i &lt; n; ++i) {
+        for (int j = i + 1; j &lt; n; ++j) {
+            swap(matrix[i][j], matrix[j][i]);
+        }
+    }
+
+    // Step 2: Reverse every row
+    for (int i = 0; i &lt; n; ++i) {
+        reverse(matrix[i].begin(), matrix[i].end());
+    }
+}
+  </pre>
+
+  <div class="subsection">Dry Run</div>
+  <pre>
+Input:
+1 2 3
+4 5 6
+7 8 9
+
+Pivot idea:
+    Not applicable here
+    Instead, use transpose + reverse
+
+After Transpose:
+1 4 7
+2 5 8
+3 6 9
+
+After Reverse Each Row:
+7 4 1
+8 5 2
+9 6 3
+
+Final Result:
+7 4 1
+8 5 2
+9 6 3
+  </pre>
+
+  <p>
+    <b>Edge case check:</b> For <i>n = 1</i>, the transpose loop does nothing and reversing the single row also changes nothing. So the algorithm naturally handles the smallest case without special branches.
+  </p>
+
+  <p>
+    <b>Time Complexity:</b> <b>O(n^2)</b>. The transpose visits only the upper triangle above the diagonal, which is still proportional to the number of cells. The row reversals together also touch every element once. Combined cost remains quadratic.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <b>O(1)</b>. All swaps are done in place, and no extra matrix or auxiliary array is used.
+  </p>
+
+</body>
+</html>

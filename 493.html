@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 8px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: 0;
+      border-top: 1px solid #000;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 493 — Reverse Pairs</div>
+
+  <div>
+    This solution follows the requested deep-dive structure from the provided instructions :contentReference[oaicite:0]{index=0}.
+  </div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <div>
+    <b>Input:</b> An integer array nums.<br/>
+    <b>Output:</b> The number of reverse pairs, where a reverse pair is an index pair (i, j) such that i &lt; j and nums[i] &gt; 2 * nums[j].<br/>
+    <b>Key Constraints:</b> The array can contain negative numbers, duplicates, and values large enough that 2 * nums[j] can overflow a 32-bit int if handled carelessly. The ordering condition i &lt; j matters, so this is not just about comparing all unordered pairs.<br/>
+    <b>Edge Cases:</b> empty array, single element array, all elements identical, already increasing order, already decreasing order, negative values, and values near integer limits where multiplication must be done in 64-bit.
+  </div>
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <div>
+    Stripped of the story, this asks for the number of index pairs whose left value is strictly more than twice the right value. The core challenge is counting such pairs efficiently without checking every pair one by one.<br/><br/>
+    <b>Category:</b> Array + Divide and Conquer / Merge Sort Counting.<br/><br/>
+    <b>Mental model:</b> Think of the array as something we can sort while simultaneously counting how many cross-boundary pairs satisfy the inequality. The key is that once both halves are sorted, the condition can be counted with two pointers instead of nested loops.<br/><br/>
+    <b>Common trap:</b> Many candidates either do brute force O(n^2) or try to count during merge without preserving the sorted structure needed for linear counting. Another frequent mistake is integer overflow when computing 2 * nums[j].
+  </div>
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <div>
+    <pre>
+for i from 0 to n - 1:
+    for j from i + 1 to n - 1:
+        if nums[i] > 2 * nums[j]:
+            count++
+return count
+    </pre>
+    <div>
+      This checks every valid pair (i, j), so the time complexity is O(n^2). The nested loop is the bottleneck because each element may be compared with every later element. The space complexity is O(1), ignoring input storage.
+    </div>
+  </div>
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <div>
+    <b>Test Case 1</b><br/>
+    Input: 1 3 2 3 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;Look at pairs manually.<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;Reverse pairs are (3,1), (3,1), and (2,1) depending on positions.<br/>
+    Action: Check all later elements for each index.<br/>
+    Result: 2 reverse pairs from the standard indexing of this array.
+  </div>
+
+  <br/>
+
+  <div>
+    <b>Test Case 2</b><br/>
+    Input: 2 4 3 5 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;The last element 1 is small enough to form multiple reverse pairs.<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;Pairs: (4,1), (3,1), (5,1), and (2,1) are all valid because each left value is greater than twice 1.<br/>
+    Action: A naive scan finds them, but it repeats work across many comparisons.<br/>
+    Result: 3 reverse pairs from the standard LeetCode example.
+  </div>
+
+  <br/>
+
+  <div>
+    <b>Test Case 3 (Edge Case)</b><br/>
+    Input: 5 4 3 2 1<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;This is reverse-sorted, so many pairs may qualify.<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;The naive method still checks every pair even though the structure is highly regular.<br/>
+    Action: Notice that if we could sort while counting, the right half being small lets us count many pairs in one sweep.<br/>
+    Result: The pattern suggests merge sort counting, where sorted halves let us use two pointers instead of repeated scanning.<br/><br/>
+    <b>Future signal to recognize this approach:</b> When a problem asks for counting pairs with an order constraint and an inequality that becomes easier after sorting, think of divide and conquer with merge-based counting.
+  </div>
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <div>
+    There is one standard fully optimal approach here: merge sort counting. The array is recursively split into two sorted halves, reverse pairs inside each half are counted recursively, and cross pairs are counted before merging.
+  </div>
+
+  <div>
+    <b>Idea:</b> If left half and right half are already sorted, then for each element in the left half, we can move a pointer through the right half until nums[i] &gt; 2 * nums[j] stops being true. Because both halves are sorted, this pointer never moves backward, so counting becomes linear for each merge level.
+  </div>
+
+  <div>
+    <b>Pseudocode:</b>
+    <pre>
+function sortAndCount(l, r):
+    if l >= r:
+        return 0
+
+    mid = (l + r) / 2
+    count = sortAndCount(l, mid)
+    count += sortAndCount(mid + 1, r)
+
+    j = mid + 1
+    for i from l to mid:
+        while j <= r and nums[i] > 2LL * nums[j]:
+            j++
+        count += (j - (mid + 1))
+
+    merge nums[l..mid] and nums[mid+1..r]
+    return count
+    </pre>
+  </div>
+
+  <div>
+    <b>Full working C++17 code:</b>
+    <pre>
+long long mergeSortCount(vector<int>& nums, vector<int>& temp, int l, int r) {
+    if (l >= r) return 0;
+
+    int mid = l + (r - l) / 2;
+    long long count = 0;
+
+    count += mergeSortCount(nums, temp, l, mid);
+    count += mergeSortCount(nums, temp, mid + 1, r);
+
+    int j = mid + 1;
+    for (int i = l; i <= mid; ++i) {
+        while (j <= r && (long long)nums[i] > 2LL * (long long)nums[j]) {
+            ++j;
+        }
+        count += (j - (mid + 1));
+    }
+
+    int i = l;
+    j = mid + 1;
+    int k = l;
+
+    while (i <= mid && j <= r) {
+        if (nums[i] <= nums[j]) {
+            temp[k++] = nums[i++];
+        } else {
+            temp[k++] = nums[j++];
+        }
+    }
+
+    while (i <= mid) temp[k++] = nums[i++];
+    while (j <= r) temp[k++] = nums[j++];
+
+    for (int idx = l; idx <= r; ++idx) {
+        nums[idx] = temp[idx];
+    }
+
+    return count;
+}
+
+int reversePairs(vector<int>& nums) {
+    if (nums.empty()) return 0;
+    vector<int> temp(nums.size());
+    return (int)mergeSortCount(nums, temp, 0, (int)nums.size() - 1);
+}
+    </pre>
+  </div>
+
+  <div>
+    <b>Dry run:</b><br/>
+    Input: 1 3 2 3 1
+    <pre>
+Split:
+  Left  = 1 3 2
+  Right = 3 1
+
+After recursive sorting:
+  Left  becomes 1 2 3
+  Right becomes 1 3
+
+Cross-pair count at top level:
+  i = 0, nums[i] = 1
+    j moves over right half?
+    1 > 2*1 ? no
+    Count += 0
+
+  i = 1, nums[i] = 2
+    2 > 2*1 ? no
+    Count += 0
+
+  i = 2, nums[i] = 3
+    3 > 2*1 ? yes, j advances once
+    3 > 2*3 ? no
+    Count += 1
+
+Merge:
+  Final sorted array = 1 1 2 3 3
+
+Total result = 2
+    </pre>
+  </div>
+
+  <div>
+    <b>Extreme edge case handling:</b><br/>
+    Input: -5 -5 -5<br/>
+    Since -5 &gt; 2 * -5 becomes -5 &gt; -10, every earlier index forms a reverse pair with every later one. The merge-sort approach still counts this correctly because the inequality works for negatives too. The cast to 2LL prevents overflow on large values.
+  </div>
+
+  <div>
+    <b>Time Complexity:</b> O(n log n). Each level of recursion does linear counting plus linear merging, and there are log n levels.<br/>
+    <b>Space Complexity:</b> O(n) for the temporary merge array, plus O(log n) recursion stack.
+  </div>
+
+  <div>
+    <b>Algorithm name:</b> Merge Sort Counting / Divide and Conquer Counting.
+  </div>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>LeetCode 1 — Two Sum</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 8px 0;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #aaa;
+      margin: 22px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div class="title">LeetCode 1 — Two Sum</div>
+
+<p>Workflow followed from the uploaded instruction file. :contentReference[oaicite:0]{index=0}</p>
+
+<div class="section">1. Problem Statement</div>
+
+<p><span class="label">Input:</span> An integer array <b>nums</b> and an integer <b>target</b>.</p>
+<p><span class="label">Output:</span> Return the indices of the two distinct elements whose sum equals <b>target</b>.</p>
+<p><span class="label">Key Constraints:</span> You cannot use the same element twice. The problem guarantees exactly one valid answer, so you do not need to handle “no solution” as a normal case in the final LeetCode setting. The output must be the indices, not the values.</p>
+<p><span class="label">Edge Cases:</span> empty array, single element array, duplicate values, negative numbers, target formed by equal numbers such as 3 + 3, and the case where the correct pair appears only after several earlier elements have already been seen.</p>
+
+<hr>
+
+<div class="section">2. Problem Understanding &amp; Approach Overview</div>
+
+<p>This problem is really asking: for every number, can we instantly know whether its complement <code>target - nums[i]</code> has already appeared?</p>
+<p>The core challenge is fast pair lookup. Without extra structure, you are forced into repeated scanning. This is a classic <b>pair lookup / complement search</b> problem.</p>
+<p>The mental model is simple: walk through the array once while remembering what you have seen so far. At each position, ask whether the missing half of the sum is already in memory.</p>
+<p>The subtle trap is inserting the current element into the map before checking the complement. That can accidentally let the same index match itself when <code>target = 2 * nums[i]</code>.</p>
+
+<hr>
+
+<div class="section">3. Brute Force Solution</div>
+
+<p>The naive idea is to check every pair of indices.</p>
+
+<pre>for i from 0 to n-1:
+    for j from i+1 to n-1:
+        if nums[i] + nums[j] == target:
+            return [i, j]</pre>
+
+<p><span class="label">Why it works:</span> it explicitly tests every possible pair, so it cannot miss the answer.</p>
+<p><span class="label">Time Complexity:</span> O(n²). There are two nested loops, and the inner loop may run almost n times for each i.</p>
+<p><span class="label">Space Complexity:</span> O(1). No extra data structure is required beyond a few variables.</p>
+<p><span class="label">Bottleneck:</span> the repeated re-checking of pairs. The same numbers are compared many times.</p>
+
+<hr>
+
+<div class="section">4. Intuition Building</div>
+
+<div class="section" style="font-size: 13pt; margin-top: 18px;">Test Case 1</div>
+
+<p><span class="label">Input:</span> 2 7 11 15, target = 9</p>
+<p>Current state: nothing seen yet.</p>
+<p><span class="label">Action:</span> Read 2. Complement needed is 7. It is not in memory, so store 2.</p>
+<p><span class="label">Action:</span> Read 7. Complement needed is 2. It is already stored.</p>
+<p><span class="label">Result:</span> Return indices of 2 and 7.</p>
+
+<p>This shows the key idea: instead of comparing every pair, we compare the current number against a memory of past numbers.</p>
+
+<div class="section" style="font-size: 13pt; margin-top: 18px;">Test Case 2</div>
+
+<p><span class="label">Input:</span> 3 2 4, target = 6</p>
+<p>Current state: start with an empty map.</p>
+<p><span class="label">Action:</span> Read 3. Complement needed is 3. Not found, so store 3 → index 0.</p>
+<p><span class="label">Action:</span> Read 2. Complement needed is 4. Not found, so store 2 → index 1.</p>
+<p><span class="label">Action:</span> Read 4. Complement needed is 2. Found at index 1.</p>
+<p><span class="label">Result:</span> Return indices 1 and 2.</p>
+
+<p>The pattern becomes clearer: the answer is found the first time the complement appears among previously seen values. This is why a hash map removes the need for the inner loop.</p>
+
+<div class="section" style="font-size: 13pt; margin-top: 18px;">Test Case 3 (Edge Case)</div>
+
+<p><span class="label">Input:</span> 3 3, target = 6</p>
+<p>Current state: empty map.</p>
+<p><span class="label">Action:</span> Read first 3. Complement needed is also 3. Not found yet, so store 3 → index 0.</p>
+<p><span class="label">Action:</span> Read second 3. Complement needed is 3. Found at index 0.</p>
+<p><span class="label">Result:</span> Return indices 0 and 1.</p>
+
+<p>This is the rare case that exposes a common bug. If you store the current value first and then search, the algorithm may incorrectly reuse the same element. The correct order is: search first, then store.</p>
+
+<p><span class="label">Immediate signal for this approach in a future problem:</span> whenever you see “find two numbers that add up to a target” and the output depends on indices or positions, think of a hash map of complements.</p>
+
+<hr>
+
+<div class="section">5. Optimized Solution</div>
+
+<p><span class="label">Algorithm Name:</span> One-pass Hash Map / Complement Lookup.</p>
+
+<p>The further insight is that you do not need to wait until the end to compare everything. The moment you read a value, you can determine whether its complement has already appeared. That gives a true single-pass solution.</p>
+
+<pre>For each index i from 0 to n-1:
+    needed = target - nums[i]
+    if needed exists in map:
+        return [map[needed], i]
+    store nums[i] with index i in map</pre>
+
+<p><span class="label">Why this is optimal:</span> every element is processed once, and each lookup/insert is expected O(1) with a hash table.</p>
+<p><span class="label">Time Complexity:</span> O(n). Each element is handled once, and each hash map operation is expected constant time.</p>
+<p><span class="label">Space Complexity:</span> O(n). In the worst case, all numbers may need to be stored before the answer is found.</p>
+
+<p><span class="label">Dry Run:</span></p>
+
+<pre>Input: nums = [2, 7, 11, 15], target = 9
+
+Pivot idea: not applicable here; we are doing complement search.
+
+Step 1
+Current number: 2
+Needed: 7
+Map before lookup: {}
+7 not found
+Store: 2 -> 0
+Map after store: {2: 0}
+
+Step 2
+Current number: 7
+Needed: 2
+Map before lookup: {2: 0}
+2 found at index 0
+Final answer: [0, 1]</pre>
+
+<p><span class="label">Edge case handling:</span> for input like <code>[3, 3]</code> with target <code>6</code>, the first 3 is stored, and the second 3 correctly matches it. Because lookup happens before insertion, the same index is never reused.</p>
+
+<p><span class="label">Interview-ready C++17 code:</span></p>
+
+<pre>vector&lt;int&gt; twoSum(vector&lt;int&gt;&amp; nums, int target) {
+    unordered_map&lt;int, int&gt; mp;
+
+    for (int i = 0; i &lt; (int)nums.size(); i++) {
+        int need = target - nums[i];
+
+        auto it = mp.find(need);
+        if (it != mp.end()) {
+            return {it-&gt;second, i};
+        }
+
+        mp[nums[i]] = i;
+    }
+
+    return {};
+}</pre>
+
+<p>This solution is the standard optimal approach for LeetCode 1 because it reduces pair search from quadratic scanning to constant-time complement checks.</p>
+
+</body>
+</html>

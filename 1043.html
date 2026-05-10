@@ -1,0 +1,241 @@
+<html>
+<head>
+  <title>LeetCode 1043 - Partition Array for Maximum Sum</title>
+</head>
+<body style="font-family:'Times New Roman', serif; font-size:12pt; line-height:1.8; max-width:760px; margin:40px auto; color:#000;">
+  <div style="text-align:center; font-size:14pt; font-weight:bold;">LeetCode 1043 — Partition Array for Maximum Sum</div>
+
+  <hr>
+
+  <div style="font-size:14pt; font-weight:bold; margin-top:28px;">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> You are given an integer array <b>nums</b> and an integer <b>k</b>. You may partition the array into contiguous subarrays, where each subarray has length at most <b>k</b>.
+    For every subarray, all its elements are replaced by the maximum element in that subarray, and the score of that subarray becomes <i>maximum element × subarray length</i>.
+  </p>
+  <p>
+    <b>Output:</b> Return the maximum possible total score after partitioning the entire array.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The partitions must be contiguous, every chosen block can have length from 1 to <b>k</b>, and every element must belong to exactly one block. The decision at one position affects all future choices, so local greediness is not enough.
+  </p>
+  <p>
+    <b>Edge Cases:</b> A single element array, <b>k = 1</b>, <b>k ≥ n</b>, all elements equal, strictly increasing or decreasing arrays, and cases where the best answer comes from mixing short and long partitions rather than using the same size everywhere.
+  </p>
+
+  <div style="font-size:14pt; font-weight:bold; margin-top:28px;">Step 2 — Problem Understanding & Approach Overview</div>
+  <p>
+    Strip away the story: at every index, decide how far to extend the current partition, knowing that every partition contributes its maximum value multiplied by its length.
+  </p>
+  <p>
+    The core challenge is choosing the best partition size at each position while preserving contiguity.
+  </p>
+  <p>
+    <b>Category:</b> Dynamic Programming, partition DP.
+  </p>
+  <p>
+    <b>Mental model:</b> Think from left to right. At index <b>i</b>, try ending the last block with length 1, 2, ..., <b>k</b>, compute that block’s value, and combine it with the best answer for the prefix before it.
+  </p>
+  <p>
+    <b>Common trap:</b> Greedy choices like “always take the largest possible block” or “always extend while the max increases” fail because a short block now may unlock a much better partition later.
+  </p>
+
+  <div style="font-size:14pt; font-weight:bold; margin-top:28px;">Step 3 — Brute Force Solution</div>
+  <p>
+    The naive idea is to recursively try every valid partition starting at each index. For each position, choose block length from 1 to <b>k</b>, compute the block score, and recurse on the remaining suffix.
+  </p>
+
+  <pre style="font-family:Consolas, monospace; font-size:11pt; background:#f5f5f5; border-left:3px solid #bbb; padding:10px 14px; white-space:pre;">
+dfs(i):
+    if i == n:
+        return 0
+
+    ans = 0
+    maxVal = 0
+
+    for len from 1 to k:
+        if i + len - 1 >= n:
+            break
+
+        maxVal = max(maxVal, nums[i + len - 1])
+        ans = max(ans, maxVal * len + dfs(i + len))
+
+    return ans
+  </pre>
+
+  <p>
+    <b>Time Complexity:</b> Exponential in the worst case, roughly <b>O(k^n)</b>, because each index branches into up to <b>k</b> choices and the same suffixes are recomputed many times.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <b>O(n)</b> recursion depth.
+  </p>
+  <p>
+    <b>Performance bottleneck:</b> Repeating the same subproblems for overlapping suffixes. That is exactly what DP removes.
+  </p>
+
+  <div style="font-size:14pt; font-weight:bold; margin-top:28px;">Step 4 — Intuition Building</div>
+
+  <div style="margin-top:10px; font-weight:bold;">Test Case 1</div>
+  <p>
+    <b>Input:</b> nums = [1], k = 1<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Only one possible block exists.<br>
+    <b>Action:</b> Take the single element as one partition.<br>
+    <b>Result:</b> 1
+  </p>
+
+  <div style="margin-top:10px; font-weight:bold;">Test Case 2</div>
+  <p>
+    <b>Input:</b> nums = [5, 5, 5], k = 3<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Every partition of any size has the same maximum: 5.<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;A larger block always multiplies that same max by a larger length.<br>
+    <b>Action:</b> Take the whole array as one block.<br>
+    <b>Result:</b> 5 × 3 = 15
+  </p>
+
+  <div style="margin-top:10px; font-weight:bold;">Test Case 3</div>
+  <p>
+    <b>Input:</b> nums = [1, 15, 7, 9, 2, 5, 10], k = 3<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;At the start, a short block can preserve a better structure later.<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;For example, grouping [1, 15, 7] gives 15 × 3, but that is not automatically optimal globally.<br>
+    <b>Action:</b> Try every block length 1..3 at each position and combine with the best prefix answer.<br>
+    <b>Result:</b> The optimal total is 84.
+  </p>
+
+  <p>
+    The important discovery is that the best answer for a prefix only depends on earlier prefixes, not on the full partition history. That makes dynamic programming natural.
+  </p>
+  <p>
+    A rare but important edge case is <b>k ≥ n</b>. In that case, the best answer is often the entire array as one block, but not always by instinct alone — DP still handles it safely by checking all lengths up to <b>min(k, i)</b>.
+  </p>
+  <p>
+    <b>Signal for future problems:</b> If a problem asks for the best score over a sequence with contiguous segments, and each segment’s value depends on the segment’s maximum/minimum/sum and its length, think <b>partition DP</b>.
+  </p>
+
+  <div style="font-size:14pt; font-weight:bold; margin-top:28px;">Step 5 — Optimized Solution</div>
+  <p>
+    There is one optimal solution family here: dynamic programming with memoization or tabulation. The fully optimal interview answer is bottom-up DP with <b>O(nk)</b> time.
+  </p>
+
+  <p><b>Idea:</b> Let <b>dp[i]</b> be the maximum score for the prefix <b>nums[0..i-1]</b>. To compute <b>dp[i]</b>, consider the last block ending at position <b>i-1</b> with length <b>len</b> from 1 to <b>k</b>. Track the maximum element in that block while expanding backward.</p>
+
+  <pre style="font-family:Consolas, monospace; font-size:11pt; background:#f5f5f5; border-left:3px solid #bbb; padding:10px 14px; white-space:pre;">
+for i from 1 to n:
+    maxVal = 0
+    for len from 1 to k:
+        if i - len < 0:
+            break
+        maxVal = max(maxVal, nums[i - len])
+        dp[i] = max(dp[i], dp[i - len] + maxVal * len)
+  </pre>
+
+  <p><b>Why this works:</b> The last partition must end at <b>i-1</b>. If its length is <b>len</b>, then everything before it is an independent optimal prefix problem. We only need the maximum inside that last block, which can be maintained while expanding the block backward.</p>
+
+  <div style="font-weight:bold; margin-top:10px;">Dry Run on nums = [1, 15, 7, 9, 2, 5, 10], k = 3</div>
+  <pre style="font-family:Consolas, monospace; font-size:11pt; background:#f5f5f5; border-left:3px solid #bbb; padding:10px 14px; white-space:pre;">
+dp[0] = 0
+
+i = 1
+  len = 1
+    block = [1], maxVal = 1
+    dp[1] = max(0, dp[0] + 1*1) = 1
+
+i = 2
+  len = 1
+    block = [15], maxVal = 15
+    dp[2] = max(0, dp[1] + 15*1) = 16
+  len = 2
+    block = [1, 15], maxVal = 15
+    dp[2] = max(16, dp[0] + 15*2) = 30
+
+i = 3
+  len = 1
+    block = [7], maxVal = 7
+    dp[3] = max(0, dp[2] + 7*1) = 37
+  len = 2
+    block = [15, 7], maxVal = 15
+    dp[3] = max(37, dp[1] + 15*2) = 31
+  len = 3
+    block = [1, 15, 7], maxVal = 15
+    dp[3] = max(37, dp[0] + 15*3) = 45
+
+i = 4
+  len = 1
+    block = [9], maxVal = 9
+    dp[4] = max(0, dp[3] + 9*1) = 54
+  len = 2
+    block = [7, 9], maxVal = 9
+    dp[4] = max(54, dp[2] + 9*2) = 48
+  len = 3
+    block = [15, 7, 9], maxVal = 15
+    dp[4] = max(54, dp[1] + 15*3) = 46
+
+i = 5
+  len = 1
+    block = [2], maxVal = 2
+    dp[5] = max(0, dp[4] + 2*1) = 56
+  len = 2
+    block = [9, 2], maxVal = 9
+    dp[5] = max(56, dp[3] + 9*2) = 63
+  len = 3
+    block = [7, 9, 2], maxVal = 9
+    dp[5] = max(63, dp[2] + 9*3) = 57
+
+i = 6
+  len = 1
+    block = [5], maxVal = 5
+    dp[6] = max(0, dp[5] + 5*1) = 68
+  len = 2
+    block = [2, 5], maxVal = 5
+    dp[6] = max(68, dp[4] + 5*2) = 64
+  len = 3
+    block = [9, 2, 5], maxVal = 9
+    dp[6] = max(68, dp[3] + 9*3) = 72
+
+i = 7
+  len = 1
+    block = [10], maxVal = 10
+    dp[7] = max(0, dp[6] + 10*1) = 82
+  len = 2
+    block = [5, 10], maxVal = 10
+    dp[7] = max(82, dp[5] + 10*2) = 83
+  len = 3
+    block = [2, 5, 10], maxVal = 10
+    dp[7] = max(83, dp[4] + 10*3) = 84
+
+Final Result: dp[7] = 84
+  </pre>
+
+  <p>
+    <b>Edge case handling:</b> If <b>k &gt; n</b>, the inner loop naturally stops when <b>i - len &lt; 0</b>. If <b>k = 1</b>, the solution reduces to summing all elements, because only single-element partitions are allowed.
+  </p>
+
+  <p><b>Time Complexity:</b> <b>O(nk)</b>, because for each index <b>i</b>, we try up to <b>k</b> partition lengths.</p>
+  <p><b>Space Complexity:</b> <b>O(n)</b> for the DP array. It can be reduced to <b>O(n)</b> only in the straightforward form; further reduction is not useful because each state may depend on up to <b>k</b> previous states.</p>
+
+  <p><b>Algorithm Name:</b> Dynamic Programming / Partition DP.</p>
+
+  <div style="font-weight:bold; margin-top:28px;">Full Working C++17 Code</div>
+  <pre style="font-family:Consolas, monospace; font-size:11pt; background:#f5f5f5; border-left:3px solid #bbb; padding:10px 14px; white-space:pre;">
+int maxSumAfterPartitioning(vector<int>& nums, int k) {
+    int n = nums.size();
+    vector<int> dp(n + 1, 0);
+
+    for (int i = 1; i <= n; ++i) {
+        int maxVal = 0;
+
+        for (int len = 1; len <= k; ++len) {
+            if (i - len < 0) break;
+
+            maxVal = max(maxVal, nums[i - len]);
+            dp[i] = max(dp[i], dp[i - len] + maxVal * len);
+        }
+    }
+
+    return dp[n];
+}
+  </pre>
+
+  <p>
+    The key interview takeaway is simple: the array is not being rearranged; it is being partitioned. Once you recognize “best answer for a prefix + bounded last segment,” the DP formulation becomes direct.
+  </p>
+</body>
+</html>

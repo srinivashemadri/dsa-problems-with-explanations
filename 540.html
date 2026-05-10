@@ -1,0 +1,261 @@
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 540 — Single Element in a Sorted Array</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    .subsection {
+      font-size: 12pt;
+      font-weight: bold;
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+    pre.code {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 16px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #999;
+      margin: 22px 0;
+    }
+    .block {
+      margin: 8px 0 12px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 540 — Single Element in a Sorted Array</div>
+  <div style="font-size:12pt;">
+    Formatted according to the provided problem-specific template. :contentReference[oaicite:0]{index=0}
+  </div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> a sorted array in which every element appears exactly twice except one element that appears exactly once.
+    The array is in non-decreasing order, and the total length is odd because all the paired elements contribute an even count plus one single element.
+  </p>
+  <p>
+    <b>Output:</b> return the single element that appears only once.
+  </p>
+  <p>
+    <b>Key Constraints:</b> the sorted order is the entire reason a logarithmic solution exists. Without sorting, this becomes a different problem. Also, every duplicated value appears in adjacent positions before the unique element, but the parity of indices shifts after the unique element.
+  </p>
+  <p>
+    <b>Edge Cases:</b> the array can have length 1; the single element can be at the beginning, in the middle, or at the end; the value range itself does not matter because the algorithm only compares neighbors; and the answer must still work when the single element is at an extreme boundary where one neighbor does not exist.
+  </p>
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    This problem is really asking for the one index where the regular pair pattern breaks. Since the array is sorted, every duplicate normally occupies two adjacent positions. The moment the single element appears, the alignment of the remaining pairs changes.
+  </p>
+  <p>
+    The core challenge is to find that break point without scanning the entire array.
+  </p>
+  <p>
+    <b>Category:</b> binary search on structure / invariant-based search.
+  </p>
+  <p>
+    <b>Mental model:</b> before the unique element, pairs start at even indices; after the unique element, pairs start at odd indices. That parity shift is the invariant to exploit.
+  </p>
+  <p>
+    <b>Subtle trap:</b> many candidates do a normal binary search but forget that the “matching partner” of a middle index depends on parity. If you compare the wrong neighbor, the search direction becomes inconsistent and you can break the invariant.
+  </p>
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The simplest approach is to scan from left to right and check neighbors in pairs. Because duplicates are adjacent, the first pair that does not match reveals the single element.
+  </p>
+
+  <pre class="code">Pseudocode
+
+for i from 0 to n - 1 step 2:
+    if i == n - 1:
+        return nums[i]
+    if nums[i] != nums[i + 1]:
+        return nums[i]
+
+return -1</pre>
+
+  <p>
+    Each iteration checks one pair. If the array length is 1, the loop returns immediately. If the unique element is at the end, the loop reaches the last index and returns it.
+  </p>
+  <p>
+    <b>Time Complexity:</b> O(n). In the worst case, we may inspect about half the array, which is still linear.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). No extra data structure is needed.
+  </p>
+  <p>
+    <b>Performance bottleneck:</b> the scan still touches elements one by one. The sorted order is not being fully exploited.
+  </p>
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <div class="subsection">Test Case 1</div>
+  <div class="block">
+    <b>Input:</b> 1 1 2 3 3 4 4 8 8<br/>
+    <b>Observation:</b> pairs are intact at the start, then the single value 2 breaks the normal pairing alignment.<br/>
+    <b>Action:</b> check pairs from the left; the first mismatch is at 2 and 3.<br/>
+    <b>Result:</b> 2
+  </div>
+  <p>
+    This shows the main pattern: once the single element is passed, the indexing of pairs no longer matches the pre-single alignment.
+  </p>
+
+  <div class="subsection">Test Case 2</div>
+  <div class="block">
+    <b>Input:</b> 3 3 7 7 10 11 11<br/>
+    <b>Observation:</b> the first two pairs are fine. The break happens when 10 is compared with 11.<br/>
+    <b>Action:</b> keep moving by pairs until a mismatch appears.<br/>
+    <b>Result:</b> 10
+  </div>
+  <p>
+    This is the same structure, but the unique element is closer to the end. A linear scan still works, but it wastes the fact that the array is sorted.
+  </p>
+
+  <div class="subsection">Test Case 3 (Edge Case)</div>
+  <div class="block">
+    <b>Input:</b> 7 8 8 9 9<br/>
+    <b>Observation:</b> the single element is at the very beginning, so the pair pattern is shifted immediately.<br/>
+    <b>Action:</b> the first comparison 7 and 8 already fails.<br/>
+    <b>Result:</b> 7
+  </div>
+  <p>
+    This edge case matters because the optimal solution must not assume the single element is safely in the middle. A boundary answer should still be found without special-case code.
+  </p>
+
+  <p>
+    The signal to remember for future problems is this: when a sorted structure contains repeated pairs and exactly one “break” element, think about parity and use binary search on the invariant, not on the raw values alone.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution</div>
+
+  <p>
+    There is one meaningful optimal solution here: a parity-aware binary search. The key insight is that before the single element, pairs begin at even indices; after the single element, that alignment flips. So we can use the midpoint to decide which half still follows the normal pairing pattern.
+  </p>
+
+  <div class="subsection">Optimized Idea</div>
+  <p>
+    At any midpoint, force it to be even. Then compare nums[mid] with nums[mid + 1]. If they match, the unique element must be to the right. If they do not match, the unique element is at mid or to the left.
+  </p>
+
+  <pre class="code">Pseudocode
+
+left = 0
+right = n - 1
+
+while left &lt; right:
+    mid = left + (right - left) / 2
+    if mid is odd:
+        mid = mid - 1
+
+    if nums[mid] == nums[mid + 1]:
+        left = mid + 2
+    else:
+        right = mid
+
+return nums[left]</pre>
+
+  <div class="subsection">Why This Works</div>
+  <p>
+    For indices before the single element, the first element of each pair sits at an even index. After the single element, that rule is broken. By forcing the midpoint to the left element of a pair candidate, we can test whether the left side still has a perfect pairing structure.
+  </p>
+  <p>
+    If nums[mid] equals nums[mid + 1], then all elements up to mid + 1 are consistent with the normal pairing pattern, so the unique element must lie to the right. Otherwise, the break happens at mid or to the left.
+  </p>
+
+  <div class="subsection">Full Working C++ Code</div>
+  <pre class="code">int singleNonDuplicate(vector&lt;int&gt;&amp; nums) {
+    int left = 0;
+    int right = (int)nums.size() - 1;
+
+    while (left &lt; right) {
+        int mid = left + (right - left) / 2;
+
+        if (mid % 2 == 1) {
+            mid--;
+        }
+
+        if (nums[mid] == nums[mid + 1]) {
+            left = mid + 2;
+        } else {
+            right = mid;
+        }
+    }
+
+    return nums[left];
+}</pre>
+
+  <div class="subsection">Dry Run</div>
+  <p>
+    <b>Input:</b> 1 1 2 3 3 4 4 8 8
+  </p>
+  <p>
+    <b>Step 1 — Initial range:</b> left = 0, right = 8<br/>
+    <b>Mid:</b> 4 (already even)<br/>
+    <b>Check:</b> nums[4] = 3, nums[5] = 4<br/>
+    <b>Action:</b> mismatch, so the single element is at mid or to the left<br/>
+    <b>New range:</b> left = 0, right = 4
+  </p>
+  <p>
+    <b>Step 2 — New range:</b> left = 0, right = 4<br/>
+    <b>Mid:</b> 2 (already even)<br/>
+    <b>Check:</b> nums[2] = 2, nums[3] = 3<br/>
+    <b>Action:</b> mismatch again, so shrink to the left half<br/>
+    <b>New range:</b> left = 0, right = 2
+  </p>
+  <p>
+    <b>Step 3 — New range:</b> left = 0, right = 2<br/>
+    <b>Mid:</b> 1, adjusted to 0 because we force even index<br/>
+    <b>Check:</b> nums[0] = 1, nums[1] = 1<br/>
+    <b>Action:</b> match, so the single element is to the right<br/>
+    <b>New range:</b> left = 2, right = 2
+  </p>
+  <p>
+    <b>Final Result:</b> nums[2] = 2
+  </p>
+
+  <div class="subsection">Extreme Edge Case Handling</div>
+  <p>
+    For a length-1 array such as [5], the loop never runs because left == right from the beginning. The function directly returns 5. For a single element at the very beginning, such as [7,8,8,9,9], the first comparison fails and the search immediately moves left. For a single element at the very end, such as [1,1,2,2,3], the comparisons keep matching and the range shrinks toward the last index.
+  </p>
+
+  <p>
+    <b>Time Complexity:</b> O(log n). Each iteration cuts the search space roughly in half.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). Only a constant number of variables are used.
+  </p>
+  <p>
+    <b>Algorithm name:</b> parity-aware binary search on sorted pairs.
+  </p>
+</body>
+</html>
