@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 496 — Next Greater Element I</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre.code {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 14px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #999;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 496 — Next Greater Element I</div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <span class="label">Input:</span> You are given two integer arrays, <b>nums1</b> and <b>nums2</b>. Every element of <b>nums1</b> appears in <b>nums2</b>, and all values are distinct.
+    For each element in <b>nums1</b>, you must find its <b>next greater element</b> in <b>nums2</b> — that is, the first number to its right in <b>nums2</b> that is strictly larger.
+  </p>
+  <p>
+    <span class="label">Output:</span> Return an array where each position corresponds to the next greater element of the same-valued element in <b>nums1</b>. If no greater element exists to the right in <b>nums2</b>, return <b>-1</b> for that element.
+  </p>
+  <p>
+    <span class="label">Key Constraints:</span> The important part is not just finding a greater number, but finding the <i>first greater number to the right</i>. Also, the elements are distinct, which makes value-to-answer mapping safe.
+  </p>
+  <p>
+    <span class="label">Edge Cases:</span> a single-element array, a strictly increasing array, a strictly decreasing array, an element that is already the maximum in <b>nums2</b>, and a case where the next greater element does not exist at all. If the problem were generalized beyond LeetCode's constraints, duplicates would be a major complication, but here distinct values remove that trap.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    Strip away the story: for each queried value from <b>nums1</b>, you need the next greater value in the relative order of <b>nums2</b>. This is a classic <b>Next Greater Element</b> problem.
+  </p>
+  <p>
+    The core challenge is to avoid scanning the right side again and again for every element.
+  </p>
+  <p>
+    <span class="label">Category:</span> Monotonic Stack + Hash Map.
+  </p>
+  <p>
+    <span class="label">Mental Model:</span> Scan <b>nums2</b> from left to right while maintaining a stack of values that are still waiting for a greater number. The stack should stay in decreasing order. Whenever a new number is bigger than the top of the stack, that new number is the next greater element for the stack top.
+  </p>
+  <p>
+    <span class="label">Subtle Trap:</span> Many candidates either do a nested scan for each element, which is too slow, or they try to compute the answer only for <b>nums1</b> directly and miss the fact that it is much easier to preprocess all of <b>nums2</b> once. Another common mistake is forgetting that the answer must be the <i>first</i> greater element to the right, not just any greater element.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The naive idea is straightforward: for each number in <b>nums1</b>, first locate it in <b>nums2</b>, then scan to the right until a greater number is found.
+  </p>
+
+  <pre class="code">for each x in nums1:
+    find index of x in nums2
+    ans = -1
+    for j from index + 1 to end of nums2:
+        if nums2[j] &gt; x:
+            ans = nums2[j]
+            break
+    store ans in result</pre>
+
+  <p>
+    <span class="label">Why it works:</span> The inner scan checks numbers in exact right-side order, so the first number greater than <b>x</b> is necessarily the correct next greater element.
+  </p>
+  <p>
+    <span class="label">Time Complexity:</span> <b>O(n &times; m)</b>. For each element of <b>nums1</b>, you may scan most of <b>nums2</b> to find its position and then scan again to the right. In the worst case, this becomes quadratic.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> <b>O(1)</b> extra space, ignoring the output array.
+  </p>
+  <p>
+    <span class="label">Bottleneck:</span> Repeating right-side scans for every query wastes work. The same comparisons are being redone many times.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p>
+    The key discovery is that <b>nums2</b> can be processed once, and every number can be assigned its next greater value at the moment a bigger number appears.
+  </p>
+
+  <p><b>Test Case 1</b></p>
+  <pre class="code">Input: nums1 = 2 4
+       nums2 = 1 2 3 4
+    Observation: values keep increasing
+    Current stack: waiting elements in decreasing order
+
+Action:
+    1 arrives  - stack = [1]
+    2 arrives  - 2 &gt; 1, so next greater of 1 is 2
+                 stack = [2]
+    3 arrives  - 3 &gt; 2, so next greater of 2 is 3
+                 stack = [3]
+    4 arrives  - 4 &gt; 3, so next greater of 3 is 4
+                 stack = [4]
+
+Result mapping:
+    1 -&gt; 2
+    2 -&gt; 3
+    3 -&gt; 4
+    4 -&gt; -1
+
+Final answer for nums1:
+    2 -&gt; 3
+    4 -&gt; -1</pre>
+
+  <p><b>Test Case 2</b></p>
+  <pre class="code">Input: nums1 = 4 1 2
+       nums2 = 1 3 4 2
+    Observation: some elements never find a greater value
+    Important: the answer must be the first greater element to the right
+
+Action:
+    1 arrives  - stack = [1]
+    3 arrives  - 3 &gt; 1, so next greater of 1 is 3
+                 stack = [3]
+    4 arrives  - 4 &gt; 3, so next greater of 3 is 4
+                 stack = [4]
+    2 arrives  - 2 is not greater than 4
+                 stack = [4, 2]
+
+End of scan:
+    4 has no greater element to the right -&gt; -1
+    2 has no greater element to the right -&gt; -1
+
+Final answer for nums1:
+    4 -&gt; -1
+    1 -&gt; 3
+    2 -&gt; -1</pre>
+
+  <p><b>Test Case 3 (Edge Case)</b></p>
+  <pre class="code">Input: nums1 = 1
+       nums2 = 5 4 3 2 1
+    Observation: strictly decreasing array
+    Every new number is smaller than the previous one
+    This is the worst case for brute force if repeated many times
+
+Action:
+    5 arrives  - stack = [5]
+    4 arrives  - 4 is not greater than 5, stack = [5, 4]
+    3 arrives  - stack = [5, 4, 3]
+    2 arrives  - stack = [5, 4, 3, 2]
+    1 arrives  - stack = [5, 4, 3, 2, 1]
+
+End of scan:
+    nobody gets a greater element
+    every remaining number maps to -1
+
+Result:
+    1 -&gt; -1</pre>
+
+  <p>
+    The pattern is now visible: each number is waiting for the first bigger number that appears later. A decreasing stack stores exactly those waiting values.
+  </p>
+  <p>
+    <span class="label">What to notice for future problems:</span> Whenever a problem asks for the <i>next greater/smaller</i>, <i>first element to the right/left</i>, or <i>nearest dominating value in order</i>, your instinct should immediately go to a monotonic stack.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    There is one best-known optimization here: preprocess <b>nums2</b> once using a monotonic decreasing stack, and store the answer for every value in a hash map. Then answer each query from <b>nums1</b> in O(1).
+  </p>
+
+  <p>
+    <span class="label">Why this is fully optimal for the problem:</span> Every element of <b>nums2</b> is pushed once and popped once, so the preprocessing is linear. Since <b>nums1</b> is just a subset query, a hash lookup is the cleanest final step.
+  </p>
+
+  <p><span class="label">Optimized Solution — Pseudocode</span></p>
+  <pre class="code">create empty stack
+create empty map valueToNextGreater
+
+for each num in nums2:
+    while stack is not empty and num &gt; stack.top():
+        valueToNextGreater[stack.top()] = num
+        pop stack
+    push num onto stack
+
+while stack is not empty:
+    valueToNextGreater[stack.top()] = -1
+    pop stack
+
+for each x in nums1:
+    answer.push_back(valueToNextGreater[x])</pre>
+
+  <p><span class="label">Interview-Ready C++17 Code</span></p>
+  <pre class="code">vector<int> nextGreaterElement(vector<int>& nums1, vector<int>& nums2) {
+    unordered_map<int, int> nextGreater;
+    stack<int> st;
+
+    for (int num : nums2) {
+        while (!st.empty() && num &gt; st.top()) {
+            nextGreater[st.top()] = num;
+            st.pop();
+        }
+        st.push(num);
+    }
+
+    while (!st.empty()) {
+        nextGreater[st.top()] = -1;
+        st.pop();
+    }
+
+    vector<int> ans;
+    ans.reserve(nums1.size());
+    for (int x : nums1) {
+        ans.push_back(nextGreater[x]);
+    }
+
+    return ans;
+}</pre>
+
+  <p><span class="label">Dry Run on a Meaningful Test Case</span></p>
+  <pre class="code">Input:
+    nums1 = 4 1 2
+    nums2 = 1 3 4 2
+
+Initial state:
+    stack = empty
+    map   = empty
+
+Step 1: num = 1
+    stack is empty
+    push 1
+    stack = [1]
+
+Step 2: num = 3
+    3 &gt; 1, so 1's next greater is 3
+    pop 1
+    push 3
+    stack = [3]
+    map = { 1: 3 }
+
+Step 3: num = 4
+    4 &gt; 3, so 3's next greater is 4
+    pop 3
+    push 4
+    stack = [4]
+    map = { 1: 3, 3: 4 }
+
+Step 4: num = 2
+    2 is not greater than 4
+    push 2
+    stack = [4, 2]
+    map = { 1: 3, 3: 4 }
+
+End of nums2:
+    2 has no greater element -&gt; -1
+    4 has no greater element -&gt; -1
+    map = { 1: 3, 3: 4, 2: -1, 4: -1 }
+
+Answer nums1:
+    4 -&gt; -1
+    1 -&gt; 3
+    2 -&gt; -1
+
+Final result:
+    -1 3 -1</pre>
+
+  <p><span class="label">How this handles the edge case from Step 4:</span> In a strictly decreasing array like <b>5 4 3 2 1</b>, nothing ever pops while scanning. Every value stays on the stack until the end, and all of them correctly get <b>-1</b>. That is exactly the right behavior, with no special-case logic needed.</p>
+
+  <p>
+    <span class="label">Time Complexity:</span> <b>O(n + m)</b>. Each value in <b>nums2</b> is pushed once and popped once, so the stack work is linear. Then each query in <b>nums1</b> is answered in O(1) average time using the hash map.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> <b>O(m)</b>. The stack and hash map can each hold up to all values from <b>nums2</b>. The output array adds <b>O(n)</b>, which is required.
+  </p>
+  <p>
+    <span class="label">Algorithm Name:</span> Monotonic Decreasing Stack + Hash Map.
+  </p>
+
+  <hr />
+
+  <div class="section">Final Interview Takeaway</div>
+  <p>
+    The real insight is not “use a stack” in the abstract. It is: <b>as soon as a larger number appears, it resolves every smaller unresolved number before it</b>. That is why the decreasing stack works so naturally.
+  </p>
+  <p>
+    When you see a future problem asking for the next greater/smaller element, the first thing to ask yourself is: <i>Can I process the array once and resolve waiting elements as soon as a better candidate appears?</i> If yes, you are probably looking at a monotonic stack problem.
+  </p>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 503 - Next Greater Element II</title>
+</head>
+<body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.8; max-width: 760px; margin: 40px auto; color: #000;">
+  <div style="text-align: center; font-size: 14pt; font-weight: bold;">LeetCode 503 — Next Greater Element II</div>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 1 — Problem Statement</div>
+  <p><b>Input:</b> You are given a circular array of integers. “Circular” means that after the last element, the array continues again from the first element.</p>
+  <p><b>Output:</b> For every index, return the first element to its right, moving circularly, that is strictly greater than the current element. If no such element exists, return <code>-1</code> for that position.</p>
+  <p><b>Key Constraints:</b> The array can contain duplicates, so “strictly greater” matters. The circular nature is the real twist: the next greater element may lie before the current index in the original array. The answer must be computed efficiently because a naive restart-from-beginning approach can repeat work too much.</p>
+  <p><b>Edge Cases:</b> An array with one element, an array where all values are identical, an array already strictly increasing, an array strictly decreasing, and cases where the next greater element appears only after wrap-around are all important. Duplicates are especially tricky because equal values must not be treated as greater.</p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>Strip away the story, and this is really asking: for each position, how far to the right do I need to look in a circular order before I find a strictly larger value?</p>
+  <p>The core challenge is avoiding repeated scanning of the same suffix for every index. This is a classic <b>monotonic stack</b> problem, and the circular behavior is handled by simulating two passes over the array.</p>
+  <p>The mental model is simple: imagine scanning from right to left while maintaining a stack of “useful candidates” that are in strictly decreasing order from top to bottom. The top of the stack is always the nearest valid greater candidate for the current element.</p>
+  <p>The subtle trap is forgetting that the array wraps around. A lot of candidates do one linear pass and miss answers that appear only after the end of the array. Another common mistake is using a stack but not popping all values that are less than or equal to the current number, which breaks the “next greater” guarantee.</p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 3 — Brute Force Solution</div>
+  <p>For every index, scan forward one step at a time, wrapping around with modulo, until you either find a greater element or come back to the same index.</p>
+
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">for each i from 0 to n - 1:
+    answer[i] = -1
+    for step from 1 to n - 1:
+        j = (i + step) % n
+        if nums[j] &gt; nums[i]:
+            answer[i] = nums[j]
+            break</pre>
+
+  <p><b>Time Complexity:</b> <code>O(n^2)</code>. For each of the <code>n</code> positions, we may scan almost the full array in the worst case.</p>
+  <p><b>Space Complexity:</b> <code>O(1)</code> extra space, ignoring the output array.</p>
+  <p><b>Performance Bottleneck:</b> The same elements get rechecked again and again for different indices. That repeated work is exactly what the optimized stack removes.</p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 4 — Intuition Building</div>
+
+  <div>
+    <p><b>Test Case 1</b></p>
+    <p>Input: 1 2 1<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;The next greater for 1 at index 0 is 2<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;The next greater for 2 does not exist<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;The next greater for 1 at index 2 wraps around to 2</p>
+    <p>Action: If we scan from right to left, we can keep only the candidates that are still useful.</p>
+    <p>Result: 2 -1 2</p>
+  </div>
+
+  <div>
+    <p><b>Test Case 2</b></p>
+    <p>Input: 3 2 1<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;Every element is larger than everything to its right in the original order<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;But because the array is circular, 1 can see 3, and 2 can also see 3</p>
+    <p>Action: A one-pass solution fails here. We need a second virtual pass so each index can “see” the beginning of the array.</p>
+    <p>Result: -1 3 3</p>
+  </div>
+
+  <div>
+    <p><b>Test Case 3 (Edge Case)</b></p>
+    <p>Input: 2 2 2<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;All elements are equal<br>
+       &nbsp;&nbsp;&nbsp;&nbsp;Equal is not greater, so no element can ever find a next greater value</p>
+    <p>Action: While maintaining the stack, every equal value gets removed because it cannot help the current index.</p>
+    <p>Result: -1 -1 -1</p>
+  </div>
+
+  <p>The key insight is that once a value is smaller than or equal to the current value, it can never be the next greater element for this current index or for any earlier index that sees this current value first. That is why the stack stays monotonic. For the circular part, scanning the array twice lets the left side of the original array act like a continuation of the right side.</p>
+  <p>What should instantly make you think of this approach in a future problem is this combination: “next greater/smaller,” “nearest valid candidate,” and “wrap-around” or “circular” behavior.</p>
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 5 — Optimized Solution</div>
+  <p><b>Algorithm:</b> Monotonic Decreasing Stack with Two-Pass Circular Simulation.</p>
+  <p>We iterate from <code>2n - 1</code> down to <code>0</code>. The index we actually inspect is <code>i % n</code>. This simulates seeing the array twice from right to left. The stack stores candidate values in decreasing order. For each current value, we remove everything that is less than or equal to it, because those values cannot be the next greater element. After cleanup, the top of the stack is the first greater value to the right in circular order, but we only record answers during the first virtual pass (<code>i &lt; n</code>).</p>
+
+  <p><b>Why two passes and why not one?</b> In a circular array, an element near the front may need to look beyond the end and wrap to the beginning. One pass from right to left only sees the suffix; the second pass makes the prefix available as if it were appended to the end.</p>
+
+  <p><b>Why use <code>i % n</code>?</b> Because we want to repeatedly access the same physical array positions while conceptually walking through a doubled version of the array. The modulo converts the virtual index back to a real index.</p>
+
+  <p><b>Why store values and not necessarily indices?</b> For this problem, the answer is the value of the next greater element, not its position. Values are enough because the only operation we need is comparison. Storing indices is also valid, but not required here.</p>
+
+  <p><b>Why pop while <code>&lt;=</code> and not just <code>&lt;</code>?</b> Because the problem asks for a strictly greater element. Equal values do not qualify, so they must be removed as well.</p>
+
+  <p><b>Full working C++17 code:</b></p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">vector&lt;int&gt; nextGreaterElements(vector&lt;int&gt;&amp; nums) {
+    int n = (int)nums.size();
+    vector&lt;int&gt; ans(n, -1);
+    stack&lt;int&gt; st;
+
+    for (int i = 2 * n - 1; i &gt;= 0; --i) {
+        int cur = nums[i % n];
+
+        while (!st.empty() &amp;&amp; st.top() &lt;= cur) {
+            st.pop();
+        }
+
+        if (i &lt; n) {
+            ans[i] = st.empty() ? -1 : st.top();
+        }
+
+        st.push(cur);
+    }
+
+    return ans;
+}</pre>
+
+  <p><b>Dry Run:</b></p>
+  <p><b>Input:</b> 1 2 1</p>
+  <p>
+    <b>Virtual scan from right to left:</b><br>
+    i = 5, cur = 1 &nbsp;&nbsp;&nbsp;&nbsp;Stack before: empty<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Action: push 1<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Stack after: [1]<br><br>
+
+    i = 4, cur = 2 &nbsp;&nbsp;&nbsp;&nbsp;Stack before: [1]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Pop 1 because 1 &lt;= 2<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Action: push 2<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Stack after: [2]<br><br>
+
+    i = 3, cur = 1 &nbsp;&nbsp;&nbsp;&nbsp;Stack before: [2]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Top = 2, so 2 is the next greater for this 1 in the virtual world<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Action: push 1<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Stack after: [2, 1]<br><br>
+
+    i = 2, cur = 1 &nbsp;&nbsp;&nbsp;&nbsp;Stack before: [2, 1]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Pop 1 because equal is not greater<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Top = 2<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Action: push 1<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Stack after: [2, 1]<br><br>
+
+    i = 1, cur = 2 &nbsp;&nbsp;&nbsp;&nbsp;Stack before: [2, 1]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Pop 1, then pop 2 because both are &lt;= 2<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;No greater element remains<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Answer[1] = -1<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Action: push 2<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Stack after: [2]<br><br>
+
+    i = 0, cur = 1 &nbsp;&nbsp;&nbsp;&nbsp;Stack before: [2]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Top = 2<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Answer[0] = 2<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Action: push 1<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Stack after: [2, 1]
+  </p>
+
+  <p><b>Final Result:</b> 2 -1 2</p>
+
+  <p><b>How this handles the extreme edge case:</b> For input like <code>5 4 3 2 1</code>, the stack still works because the second virtual pass exposes the earlier larger values to the later elements. For input like <code>2 2 2</code>, every equal value gets popped, so no false “greater” answer is ever produced.</p>
+
+  <p><b>Time Complexity:</b> <code>O(n)</code>. Each element is pushed at most twice across the two virtual passes and popped at most twice overall, so the total stack work stays linear.</p>
+  <p><b>Space Complexity:</b> <code>O(n)</code> for the stack in the worst case, plus the output array.</p>
+
+  <hr>
+
+  <p style="font-size: 12pt;">The most important pattern to remember is this: whenever a problem asks for the nearest next greater or smaller item, especially in a circular setting, think monotonic stack first.</p>
+</body>
+</html>

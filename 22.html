@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 22 - Generate Parentheses</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    h2 {
+      font-family: 'Times New Roman', serif;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 24px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 22 — Generate Parentheses</div>
+
+  <h2>Step 1 — Problem Statement</h2>
+  <p>
+    <span class="label">Input:</span> An integer <b>n</b>, representing the number of pairs of parentheses.
+    <br/>
+    <span class="label">Output:</span> All possible strings of length <b>2n</b> that form valid, well-formed parentheses combinations.
+    <br/>
+    <span class="label">Key Constraints:</span> The total number of answers can grow quickly, so the solution must avoid generating invalid strings unnecessarily. The problem is fundamentally about building only valid sequences, not filtering after the fact.
+    <br/>
+    <span class="label">Edge Cases:</span> The smallest meaningful input is <b>n = 1</b>. If you think beyond the usual constraints, <b>n = 0</b> would naturally correspond to one empty string. Another important edge case is the maximum allowed <b>n</b>, where brute force becomes far too expensive. The tricky part is not correctness of a single string, but correctness of the entire generated set without duplicates.
+  </p>
+
+  <hr/>
+
+  <h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+  <p>
+    This problem is really asking: <b>how do we construct every valid parentheses string of length 2n without ever building invalid ones?</b>
+    The core challenge is combinatorial generation under a prefix-validity constraint. This is a classic <b>backtracking / DFS generation</b> problem.
+    The instinctive mental model is: at every position, you may place either <b>'('</b> or <b>')'</b>, but only if doing so keeps the partial string “safe.” The subtle trap is to generate all 2<sup>2n</sup> strings and validate them later; that wastes enormous work. Another common mistake is allowing more closing brackets than opening brackets at some prefix, which immediately breaks validity.
+  </p>
+
+  <hr/>
+
+  <h2>Step 3 — Brute Force Solution</h2>
+  <p>
+    The naive idea is to generate every string of length 2n using parentheses choices, then check whether each string is valid.
+    For each generated string, we scan left to right and maintain a balance counter:
+    an opening parenthesis increases balance, a closing parenthesis decreases it.
+    A string is valid only if balance never becomes negative and ends at zero.
+  </p>
+
+  <pre>Brute Force Pseudocode
+
+generate every string s of length 2n using '(' and ')'
+for each generated string s:
+    if s is valid:
+        add s to answer
+
+isValid(s):
+    balance = 0
+    for each character c in s:
+        if c == '(':
+            balance++
+        else:
+            balance--
+        if balance &lt; 0:
+            return false
+    return balance == 0</pre>
+
+  <p>
+    <span class="label">Time Complexity:</span> O(2<sup>2n</sup> &times; n).
+    There are 2<sup>2n</sup> candidate strings, and each validation takes O(n).
+    <br/>
+    <span class="label">Space Complexity:</span> O(n) for recursion / temporary string storage, ignoring the output.
+    <br/>
+    <span class="label">Bottleneck:</span> The bottleneck is exploring huge numbers of invalid strings that should never have been built in the first place.
+  </p>
+
+  <hr/>
+
+  <h2>Step 4 — Intuition Building</h2>
+
+  <h3>Test Case 1</h3>
+  <p>
+    <span class="label">Input:</span> n = 1
+    <br/>
+    <span class="label">Current state:</span> We need one '(' and one ')'. There is only one valid answer.
+    <br/>
+    <span class="label">Action:</span> Start with '(' because a valid string cannot begin with ')'. Then place ')'.
+    <br/>
+    <span class="label">Result:</span> "()"
+  </p>
+  <p>
+    This tiny case already reveals the key rule: a closing bracket is only legal if there is an unmatched opening bracket before it.
+  </p>
+
+  <h3>Test Case 2</h3>
+  <p>
+    <span class="label">Input:</span> n = 2
+    <br/>
+    <span class="label">Current state:</span> We need two opens and two closes.
+    <br/>
+    <span class="label">Action:</span> Build only prefixes that never become invalid:
+    <br/>
+    &nbsp;&nbsp;Prefix "(" can still grow into valid strings.
+    <br/>
+    &nbsp;&nbsp;Prefix ")" is invalid immediately, so it must never be explored.
+    <br/>
+    &nbsp;&nbsp;From "((", we can close once to get "(()", then close again to get "(())".
+    <br/>
+    &nbsp;&nbsp;From "()", we can open again to get "()(", then close to get "()()".
+    <br/>
+    <span class="label">Result:</span> "(())", "()()"
+  </p>
+  <p>
+    The important discovery is that we are not generating strings blindly. We are growing a tree of prefixes, and pruning immediately when a prefix cannot possibly lead to a valid answer.
+  </p>
+
+  <h3>Test Case 3</h3>
+  <p>
+    <span class="label">Input:</span> n = 3
+    <br/>
+    <span class="label">Current state:</span> We need three opens and three closes. A prefix is valid only if:
+    <br/>
+    &nbsp;&nbsp;openCount &le; n
+    <br/>
+    &nbsp;&nbsp;closeCount &le; openCount
+    <br/>
+    <span class="label">Action:</span> Explore valid branches only:
+    <br/>
+    &nbsp;&nbsp;"(((" is allowed because we still have opens left.
+    <br/>
+    &nbsp;&nbsp;"((()" is allowed because closeCount never exceeds openCount.
+    <br/>
+    &nbsp;&nbsp;"((())" is still safe.
+    <br/>
+    &nbsp;&nbsp;"((()))" becomes a complete answer.
+    <br/>
+    &nbsp;&nbsp;Other branches like "())" are cut off the moment a close appears too early.
+    <br/>
+    <span class="label">Result:</span> All valid combinations are produced without duplicate checking and without post-validation.
+  </p>
+  <p>
+    <span class="label">What inefficiency disappears?</span> The entire universe of invalid sequences is never constructed. That is the real optimization.
+    <br/>
+    <span class="label">What should trigger this same approach in future problems?</span> Whenever you are asked to generate all strings/combinations/permutations under a prefix rule, think <b>backtracking with pruning</b>.
+  </p>
+
+  <hr/>
+
+  <h2>Step 5 — Optimized Solution</h2>
+
+  <p>
+    This problem has one meaningful optimal solution: <b>backtracking with two counters</b>.
+    There is no separate intermediate optimization level worth isolating here, because the key leap is already to stop generating invalid prefixes.
+    The fully optimal approach builds only valid partial strings.
+  </p>
+
+  <p>
+    The two counters are:
+    <br/>
+    <b>openCount</b> — how many '(' have been used so far.
+    <br/>
+    <b>closeCount</b> — how many ')' have been used so far.
+    <br/><br/>
+    The rules are simple:
+    <br/>
+    1. We may add '(' if openCount &lt; n.
+    <br/>
+    2. We may add ')' if closeCount &lt; openCount.
+    <br/>
+    3. A string is complete when its length becomes 2n.
+  </p>
+
+  <p>
+    Why this works:
+    <br/>
+    Any valid parentheses string must satisfy the prefix condition: at no point can the number of closing brackets exceed the number of opening brackets.
+    These two counters enforce that invariant directly during construction.
+  </p>
+
+  <pre>C++17 Code
+
+vector&lt;string&gt; generateParenthesis(int n) {
+    vector&lt;string&gt; ans;
+    string current;
+
+    function&lt;void(int, int)&gt; dfs = [&](int openCount, int closeCount) {
+        if ((int)current.size() == 2 * n) {
+            ans.push_back(current);
+            return;
+        }
+
+        if (openCount &lt; n) {
+            current.push_back('(');
+            dfs(openCount + 1, closeCount);
+            current.pop_back();
+        }
+
+        if (closeCount &lt; openCount) {
+            current.push_back(')');
+            dfs(openCount, closeCount + 1);
+            current.pop_back();
+        }
+    };
+
+    dfs(0, 0);
+    return ans;
+}</pre>
+
+  <p>
+    <span class="label">Dry Run — n = 3</span>
+  </p>
+
+  <p>
+    <b>Start</b>
+    <br/>
+    Current: ""
+    <br/>
+    openCount = 0, closeCount = 0
+  </p>
+
+  <p>
+    <b>Step 1 — Add '('</b>
+    <br/>
+    Current: "("
+    <br/>
+    openCount = 1, closeCount = 0
+    <br/>
+    Reason: we still have opens left.
+  </p>
+
+  <p>
+    <b>Step 2 — Add '(' again</b>
+    <br/>
+    Current: "(("
+    <br/>
+    openCount = 2, closeCount = 0
+  </p>
+
+  <p>
+    <b>Step 3 — Add '(' again</b>
+    <br/>
+    Current: "((("
+    <br/>
+    openCount = 3, closeCount = 0
+    <br/>
+    Now no more '(' can be added.
+  </p>
+
+  <p>
+    <b>Step 4 — Add ')'</b>
+    <br/>
+    Current: "((()"
+    <br/>
+    openCount = 3, closeCount = 1
+  </p>
+
+  <p>
+    <b>Step 5 — Add ')'</b>
+    <br/>
+    Current: "((())"
+    <br/>
+    openCount = 3, closeCount = 2
+  </p>
+
+  <p>
+    <b>Step 6 — Add ')' to complete</b>
+    <br/>
+    Current: "((()))"
+    <br/>
+    openCount = 3, closeCount = 3
+    <br/>
+    Length = 6 = 2n, so this is a valid answer.
+  </p>
+
+  <p>
+    The backtracking then returns and explores the next valid branch:
+    <br/>
+    Current: "(()"
+    <br/>
+    It eventually produces "()()", "(())()", "()(())", "()()()", and the full set of valid combinations.
+  </p>
+
+  <p>
+    <span class="label">Extreme Edge Case Handling:</span>
+    For the smallest case <b>n = 1</b>, the same rules still work:
+    we add '(' once, then ')' once, and stop exactly when the length reaches 2.
+    There is no special-case code needed.
+    <br/>
+    If you consider <b>n = 0</b> conceptually, the empty string would be the only valid output; the same recursion pattern could handle that too if allowed by the problem definition.
+  </p>
+
+  <p>
+    <span class="label">Time Complexity:</span> The number of valid sequences is the nth Catalan number, which is much smaller than 2<sup>2n</sup>.
+    A standard bound is O(C<sub>n</sub>), and each sequence has length 2n, so the total work is O(C<sub>n</sub> &times; n).
+    <br/>
+    <span class="label">Space Complexity:</span> O(n) recursion depth and O(n) temporary string storage, excluding the output list.
+    <br/>
+    <span class="label">Algorithm Name:</span> Backtracking / DFS with pruning.
+  </p>
+
+  <hr/>
+
+  <h2>Final Interview Intuition</h2>
+  <p>
+    The central insight is not “generate parentheses.” It is:
+    <br/>
+    <b>build only prefixes that can still become valid, and enforce validity while constructing the string.</b>
+    <br/><br/>
+    The moment you see a problem that asks for all valid arrangements with a local rule that depends on the prefix, think of backtracking with pruning.
+  </p>
+</body>
+</html>

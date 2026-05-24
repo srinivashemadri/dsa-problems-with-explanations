@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 42 - Trapping Rain Water</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    h2 {
+      font-family: 'Times New Roman', serif;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #000;
+      margin: 24px 0;
+    }
+    .indent {
+      margin-left: 22px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 42 — Trapping Rain Water</div>
+
+  <h2>Step 1 — Problem Statement</h2>
+  <p>
+    <b>Input:</b> An array of non-negative integers <i>height</i>, where each element represents the height of a vertical bar with unit width.
+    The bars stand next to each other, and rain falls on top of them.
+  </p>
+  <p>
+    <b>Output:</b> Return the total amount of water that can be trapped between the bars after raining.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The bars have unit width, water can only stay above a bar if there is a taller boundary on both sides, and the trapped water above any index is determined by the shorter of the tallest bar on the left and the tallest bar on the right.
+  </p>
+  <p>
+    <b>Edge Cases:</b> An empty array, a single bar, two bars, all bars equal, strictly increasing heights, strictly decreasing heights, and very large heights that can push the total water close to integer limits.
+  </p>
+  <p>
+    The real question is not “how much rain falls,” but “for each position, how much water can be held above it before spilling over the shorter side?”
+  </p>
+
+  <hr />
+
+  <h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+  <p>
+    This problem is really asking you to compute, at every index, the water level allowed by the best left boundary and the best right boundary, then subtract the bar height itself.
+  </p>
+  <p>
+    The core algorithmic challenge is to avoid recomputing left and right maxima again and again.
+  </p>
+  <p>
+    <b>Category:</b> Array, prefix/suffix reasoning, two pointers.
+  </p>
+  <p>
+    <b>Mental model:</b> Imagine every index as a bucket. The bucket fills only up to the smaller wall on either side. If one side is missing or too low, water escapes.
+  </p>
+  <p>
+    <b>Subtle trap:</b> Many candidates try to use only the global maximum or only one side’s maximum. That fails, because the water level at an index depends on <i>both</i> sides, not just one.
+  </p>
+
+  <hr />
+
+  <h2>Step 3 — Brute Force Solution</h2>
+  <p>
+    For each index, scan left to find the highest bar on the left and scan right to find the highest bar on the right. The trapped water at that index is:
+  </p>
+  <pre>max(0, min(leftMax, rightMax) - height[i])</pre>
+  <p>
+    Sum this for every index.
+  </p>
+
+  <pre>for each index i:
+    leftMax = 0
+    rightMax = 0
+
+    scan from 0 to i:
+        update leftMax
+
+    scan from i to n - 1:
+        update rightMax
+
+    waterAtI = min(leftMax, rightMax) - height[i]
+    if waterAtI &gt; 0:
+        add waterAtI to answer</pre>
+
+  <p>
+    <b>Time Complexity:</b> O(n²). For each of the n positions, we may scan the array twice.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). No extra arrays are used.
+  </p>
+  <p>
+    <b>Bottleneck:</b> Repeated scanning of the same prefixes and suffixes.
+  </p>
+
+  <hr />
+
+  <h2>Step 4 — Intuition Building</h2>
+
+  <h3>Test Case 1</h3>
+  <p>
+    <b>Input:</b> 0 1 0 2
+    <br />
+    <span class="indent">Index 0 and 1 cannot trap anything meaningful at the start.</span>
+    <br />
+    <b>Action:</b> At index 2, left boundary is 1, right boundary is 2, so water level is min(1, 2) = 1.
+    <br />
+    <b>Result:</b> Water above index 2 = 1 - 0 = 1.
+  </p>
+
+  <h3>Test Case 2</h3>
+  <p>
+    <b>Input:</b> 4 2 0 3 2 5
+    <br />
+    <span class="indent">At index 2, left max is 4 and right max is 5, so the level is min(4, 5) = 4.</span>
+    <br />
+    <b>Action:</b> Water above index 2 = 4 - 0 = 4. At index 3, level is min(4, 5) = 4, so water = 4 - 3 = 1.
+    <br />
+    <b>Result:</b> This index-by-index view shows why both sides matter.
+  </p>
+
+  <h3>Test Case 3 (Edge Case)</h3>
+  <p>
+    <b>Input:</b> 5 4 3 2 1
+    <br />
+    <span class="indent">Strictly decreasing array. There is no right boundary taller than the current bars.</span>
+    <br />
+    <b>Action:</b> Every index leaks to the right.
+    <br />
+    <b>Result:</b> 0 trapped water.
+  </p>
+
+  <p>
+    The key insight is that you do not need to know the whole future at every step if you can maintain enough information about the best left and right boundaries. That is exactly what prefix/suffix maxima and, later, two pointers exploit.
+  </p>
+  <p>
+    <b>Signal for future problems:</b> When a value at position <i>i</i> depends on the best thing seen on the left and the best thing seen on the right, think prefix/suffix maxima or two pointers immediately.
+  </p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution 1 (Intermediate)</h2>
+  <p>
+    The first optimization is to precompute the tallest bar seen so far from the left and from the right. Then each index can be answered in O(1).
+  </p>
+
+  <pre>leftMax[i] = max(height[0..i])
+rightMax[i] = max(height[i..n-1])
+
+for each i:
+    waterAtI = min(leftMax[i], rightMax[i]) - height[i]
+    if waterAtI &gt; 0:
+        add to answer</pre>
+
+  <p>
+    <b>What is eliminated:</b> The repeated left and right scans for every index.
+  </p>
+  <p>
+    <b>Time Complexity:</b> O(n). Build two arrays in linear time, then one final pass.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(n). Two auxiliary arrays store prefix and suffix maxima.
+  </p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution 2 (Best Known / Fully Optimal)</h2>
+  <p>
+    The fully optimal solution uses two pointers and constant extra space. The main insight is this:
+    when <i>leftMax &lt;= rightMax</i>, the water at the left pointer is already fully determined by <i>leftMax</i>,
+    because the right side is guaranteed to be at least as tall as <i>leftMax</i> at that moment. So we can safely process the left side.
+    Symmetrically, when <i>rightMax &lt; leftMax</i>, process the right side.
+  </p>
+
+  <p>
+    <b>Algorithm name:</b> Two Pointers with Running Maxima.
+  </p>
+
+  <p><b>C++17 Code:</b></p>
+  <pre>long long trap(vector&lt;int&gt;&amp; height) {
+    int n = (int)height.size();
+    int l = 0, r = n - 1;
+    int leftMax = 0, rightMax = 0;
+    long long ans = 0;
+
+    while (l &lt;= r) {
+        if (leftMax &lt;= rightMax) {
+            leftMax = max(leftMax, height[l]);
+            ans += (leftMax - height[l]);
+            ++l;
+        } else {
+            rightMax = max(rightMax, height[r]);
+            ans += (rightMax - height[r]);
+            --r;
+        }
+    }
+
+    return ans;
+}</pre>
+
+  <p>
+    <b>Why this works:</b> The smaller boundary decides the water level for that side. If the smaller boundary is on the left, then no future bar on the right can reduce the fact that the current left position is capped by <i>leftMax</i>. So the left cell can be finalized immediately.
+  </p>
+  <p>
+    <b>Why not always move the taller side?</b> Because the taller side is not the limiting factor. The limiting factor is always the smaller of the two maxima.
+  </p>
+
+  <h3>Dry Run on a Meaningful Test Case</h3>
+  <p>
+    <b>Input:</b> 4 2 0 3 2 5
+  </p>
+  <p>
+    <b>Initial State:</b>
+    <br />
+    l = 0, r = 5, leftMax = 0, rightMax = 0, ans = 0
+  </p>
+
+  <p>
+    <b>Step 1:</b> leftMax &lt;= rightMax is true
+    <br />
+    Pivot side: left
+    <br />
+    Update leftMax = max(0, 4) = 4
+    <br />
+    Water added = 4 - 4 = 0
+    <br />
+    Move l to 1
+  </p>
+
+  <p>
+    <b>Step 2:</b> leftMax &lt;= rightMax is false, so process right
+    <br />
+    Update rightMax = max(0, 5) = 5
+    <br />
+    Water added = 5 - 5 = 0
+    <br />
+    Move r to 4
+  </p>
+
+  <p>
+    <b>Step 3:</b> leftMax &lt;= rightMax is true
+    <br />
+    Update leftMax = max(4, 2) = 4
+    <br />
+    Water added = 4 - 2 = 2
+    <br />
+    Move l to 2
+  </p>
+
+  <p>
+    <b>Step 4:</b> leftMax &lt;= rightMax is true
+    <br />
+    Update leftMax = max(4, 0) = 4
+    <br />
+    Water added = 4 - 0 = 4
+    <br />
+    Move l to 3
+  </p>
+
+  <p>
+    <b>Step 5:</b> leftMax &lt;= rightMax is true
+    <br />
+    Update leftMax = max(4, 3) = 4
+    <br />
+    Water added = 4 - 3 = 1
+    <br />
+    Move l to 4
+  </p>
+
+  <p>
+    <b>Step 6:</b> leftMax &lt;= rightMax is true
+    <br />
+    Update leftMax = max(4, 2) = 4
+    <br />
+    Water added = 4 - 2 = 2
+    <br />
+    Move l to 5
+  </p>
+
+  <p>
+    <b>Final Result:</b> 7
+  </p>
+
+  <h3>How the Extreme Edge Case is Handled</h3>
+  <p>
+    <b>Input:</b> 5 4 3 2 1
+    <br />
+    On every step, the right side is the limiting side, but there is never a useful basin because the heights keep decreasing.
+    The algorithm still works because each step finalizes the smaller side and adds zero water whenever the current bar is the boundary itself.
+  </p>
+
+  <p>
+    <b>Time Complexity:</b> O(n). Each pointer moves at most n times, and every operation inside the loop is O(1).
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). Only a few variables are used.
+  </p>
+
+  <hr />
+
+  <h2>Final Interview Insight</h2>
+  <p>
+    If you see a problem where each position depends on the best seen so far from both directions, the pattern is often:
+    first think prefix/suffix maxima, then compress it into two pointers if the comparison logic allows it.
+  </p>
+  <p>
+    The hidden intellectual move in this problem is realizing that you do <i>not</i> need to know the exact future boundary at every index; you only need to know which side is currently the bottleneck.
+  </p>
+</body>
+</html>

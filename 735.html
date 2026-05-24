@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeetCode 735 — Asteroid Collision</title>
+  <style>
+    body {
+      font-family: "Times New Roman", serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+      padding: 0 18px;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 22px;
+    }
+    h2 {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 10px 0;
+    }
+    .code {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    .case-title {
+      font-weight: bold;
+      margin-top: 16px;
+      margin-bottom: 4px;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 22px 0;
+    }
+    .indent {
+      margin-left: 22px;
+    }
+    .footer-note {
+      margin-top: 18px;
+      font-size: 11pt;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 735 — Asteroid Collision</div>
+
+  <h2>Step 1 — Problem Statement</h2>
+  <p><b>Input:</b> You are given an array of non-zero integers, where each value represents one asteroid. The sign shows direction: positive means moving right, negative means moving left. The absolute value shows size.</p>
+  <p><b>Output:</b> Return the final state of the asteroids after all collisions have been resolved.</p>
+  <p><b>Key Constraints:</b> A collision can happen only when a right-moving asteroid is to the left of a left-moving asteroid. When two asteroids collide, the smaller one explodes. If both have the same size, both explode. Asteroids moving in the same direction never collide, and asteroids moving away from each other also never collide.</p>
+  <p><b>Edge Cases:</b> Equal-sized asteroids destroying each other, chain reactions after a collision, all asteroids moving in one direction, a left-moving asteroid meeting multiple earlier right-moving asteroids, and sequences where no collision happens at all.</p>
+
+  <h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+  <p>This problem is really asking for a one-dimensional collision simulation with local interactions. The core challenge is not tracking positions in continuous space; it is deciding, for each new asteroid, which previously surviving asteroids it can still collide with.</p>
+  <p><b>Category:</b> Stack / simulation.</p>
+  <p><b>Mental model:</b> Scan from left to right and keep only the asteroids that are still “alive.” The only dangerous situation is when the current asteroid is moving left and the most recent alive asteroid is moving right. That is exactly the kind of “last-in, first-out” conflict a stack is designed for.</p>
+  <p><b>Common trap:</b> Many candidates handle only one collision and forget chain reactions. A left-moving asteroid may destroy several right-moving asteroids in a row, so the resolution must continue until the conflict is truly gone.</p>
+
+  <h2>Step 3 — Brute Force Solution</h2>
+  <p>Naively, we can repeatedly scan the array, find the first colliding adjacent pair, resolve that pair, modify the array, and restart scanning until no more changes happen.</p>
+
+  <div class="code">repeat
+    changed = false
+    scan from left to right:
+        if asteroids[i] &gt; 0 and asteroids[i + 1] &lt; 0:
+            resolve collision:
+                if abs(left) &gt; abs(right):
+                    remove right asteroid
+                else if abs(left) &lt; abs(right):
+                    remove left asteroid
+                else:
+                    remove both asteroids
+            changed = true
+            break
+until changed == false</div>
+
+  <p>This works because every collision is eventually resolved, but it is inefficient. Each restart can rescan much of the array, and every erase can also shift elements. The bottleneck is repeated full rescanning after every collision.</p>
+  <p><b>Time Complexity:</b> O(n²) in the worst case, because the array may be scanned many times and each pass may resolve only one collision.</p>
+  <p><b>Space Complexity:</b> O(n), for the working array or temporary storage used during simulation.</p>
+
+  <hr />
+
+  <h2>Step 4 — Intuition Building</h2>
+
+  <div class="case-title">Test Case 1</div>
+  <p>Input: 5 10 -5</p>
+  <p class="indent">Current state: 5 and 10 are moving right, so they can safely stay together.<br/>
+  The next asteroid -5 moves left, so it can collide with the nearest surviving right-moving asteroid, which is 10.</p>
+  <p>Action: Compare 10 and -5. Since 10 is larger, -5 disappears.<br/>
+  Result: 5 10</p>
+
+  <p>This reveals the key pattern: a new left-moving asteroid only needs to fight with the most recent surviving right-moving asteroid, not with everything before it.</p>
+
+  <div class="case-title">Test Case 2</div>
+  <p>Input: 8 -8</p>
+  <p class="indent">Current state: 8 moves right, -8 moves left, so they are heading toward each other.<br/>
+  Their sizes are equal.</p>
+  <p>Action: Both explode.<br/>
+  Result: empty</p>
+
+  <p>This is the rare edge case many implementations get wrong if they only check greater-than and less-than, but forget exact equality.</p>
+
+  <div class="case-title">Test Case 3</div>
+  <p>Input: 10 2 -5</p>
+  <p class="indent">Current state after reading 10 2: both are moving right, so stack-like storage would be [10, 2].<br/>
+  The next asteroid -5 moves left, so it first collides with 2.</p>
+  <p>Action:<br/>
+  2 is smaller than 5, so 2 disappears.<br/>
+  Now -5 continues moving left and is still facing 10.<br/>
+  Compare 10 and -5: 10 is larger, so -5 disappears.</p>
+  <p>Result: 10</p>
+
+  <p>This is the main insight: one asteroid can trigger multiple collisions in a row. That is why a single if-condition is not enough; we need a loop that keeps resolving as long as the current asteroid is still alive and the top of the structure is a right-moving asteroid.</p>
+
+  <p><b>Signal to recognize this approach in the future:</b> any problem with ordered elements moving in one dimension, local collisions, and chain reactions should immediately suggest a stack.</p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution</h2>
+
+  <p><b>Algorithm name:</b> Stack-based collision simulation.</p>
+  <p>The fully optimal solution uses a stack to store the asteroids that are still alive after processing the prefix seen so far. Every new asteroid is compared only against the top of the stack while a collision is possible.</p>
+
+  <div class="code">vector&lt;int&gt; asteroidCollision(vector&lt;int&gt;&amp; asteroids) {
+    vector&lt;int&gt; st;
+
+    for (int a : asteroids) {
+        bool alive = true;
+
+        while (alive &amp;&amp; a &lt; 0 &amp;&amp; !st.empty() &amp;&amp; st.back() &gt; 0) {
+            if (st.back() &lt; -a) {
+                st.pop_back();
+            } else if (st.back() == -a) {
+                st.pop_back();
+                alive = false;
+            } else {
+                alive = false;
+            }
+        }
+
+        if (alive) {
+            st.push_back(a);
+        }
+    }
+
+    return st;
+}</div>
+
+  <p><b>Why this works:</b> the only possible collision is between a previous right-moving asteroid and the current left-moving asteroid. If the top of the stack is negative, both asteroids are moving left, so they never meet. If the current asteroid is positive, it is moving right and cannot collide with earlier asteroids because it is to the right of them and moving away.</p>
+  <p><b>Why the while loop is necessary:</b> after one smaller asteroid explodes, the current asteroid may still survive and need to collide again with the next right-moving asteroid behind it. That is the chain reaction.</p>
+
+  <p class="case-title">Dry Run: 10 2 -5</p>
+  <p>Pivot state is not needed here; instead, the stack represents the alive asteroids.</p>
+  <p><b>Step 1:</b> Read 10<br/>
+  Stack: 10</p>
+  <p><b>Step 2:</b> Read 2<br/>
+  Stack: 10 2</p>
+  <p><b>Step 3:</b> Read -5<br/>
+  Top = 2, and 2 &lt; 5, so 2 explodes.<br/>
+  Stack becomes: 10</p>
+  <p>Now -5 is still alive, and top = 10.<br/>
+  10 &gt; 5, so -5 explodes.<br/>
+  Final Stack: 10</p>
+
+  <p class="case-title">Dry Run: 8 -8</p>
+  <p><b>Step 1:</b> Read 8<br/>
+  Stack: 8</p>
+  <p><b>Step 2:</b> Read -8<br/>
+  Top = 8, and 8 == 8, so both explode.<br/>
+  Stack: empty</p>
+
+  <p class="case-title">Dry Run: 1 -2 -2</p>
+  <p><b>Step 1:</b> Read 1<br/>
+  Stack: 1</p>
+  <p><b>Step 2:</b> Read -2<br/>
+  Top = 1, and 1 &lt; 2, so 1 explodes.<br/>
+  Stack becomes empty.<br/>
+  Since -2 is still alive and no right-moving asteroid remains, push -2.<br/>
+  Stack: -2</p>
+  <p><b>Step 3:</b> Read -2<br/>
+  Top is negative, so no collision is possible.<br/>
+  Stack: -2 -2</p>
+
+  <p><b>Time Complexity:</b> O(n). Every asteroid is pushed at most once and popped at most once. Even though there is a while loop, the total number of pops across the entire run is bounded by n.</p>
+  <p><b>Space Complexity:</b> O(n), for the stack of surviving asteroids in the worst case where no collisions happen.</p>
+
+  <hr />
+
+  <h2>Final Takeaway</h2>
+  <p>Asteroid Collision is a classic example of “local conflict + chain reaction + ordered processing.” The correct mental move is to preserve only the alive prefix and let the most recent right-moving asteroid fight the new left-moving asteroid. Once you see that, the stack solution becomes natural rather than memorized.</p>
+
+  <p class="footer-note">Built following the structure in your uploaded instructions. :contentReference[oaicite:0]{index=0}</p>
+</body>
+</html>

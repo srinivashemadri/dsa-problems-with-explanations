@@ -1,0 +1,173 @@
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.8; max-width: 760px; margin: 40px auto; color: #000; }
+h1 { text-align: center; font-size: 14pt; font-weight: bold; margin: 0 0 18px 0; }
+h2 { font-size: 14pt; font-weight: bold; margin-top: 28px; margin-bottom: 8px; }
+h3 { font-size: 12.5pt; font-weight: bold; margin-top: 18px; margin-bottom: 6px; }
+pre { font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre; overflow-x: auto; }
+hr { border: none; border-top: 1px solid #000; margin: 18px 0; }
+p { margin: 0 0 10px 0; }
+ul { margin-top: 6px; margin-bottom: 10px; }
+li { margin-bottom: 4px; }
+code { font-family: Consolas, monospace; }
+</style>
+</head>
+<body>
+<h1>LeetCode 155 — Min Stack</h1>
+<p><i>Uploaded prompt context: :contentReference[oaicite:0]{index=0}</i></p>
+<hr>
+
+<h2>Step 1 — Problem Statement</h2>
+<p><b>Input:</b> You are asked to design a stack that supports the usual stack operations, especially <code>push</code>, <code>pop</code>, <code>top</code>, and <code>getMin</code>. The stack stores integers.</p>
+<p><b>Output:</b> After each operation, the structure must behave like a normal stack, and <code>getMin</code> must return the smallest element currently present in the stack in constant time.</p>
+<p><b>Key Constraints:</b> The real constraint is not just correctness, but time. <code>push</code>, <code>pop</code>, <code>top</code>, and <code>getMin</code> should all be handled in <b>O(1)</b> time. That immediately rules out rescanning the entire stack every time you need the minimum. The usual LeetCode contract assumes the operations are called validly.</p>
+<p><b>Edge Cases:</b> A single element stack, duplicate minimum values, strictly increasing input, strictly decreasing input, negative values, and popping until the stack becomes empty all matter. The subtle one is duplicate minima: if the current minimum is removed, the data structure must still remember the previous minimum.</p>
+
+<h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+<p>This problem is really asking for a stack with memory of the <i>minimum-so-far history</i>. The story is just packaging; the algorithmic challenge is to answer a range-like query, <code>getMin</code>, instantly while the data changes over time.</p>
+<p>The core category is <b>data structure design</b>, specifically a stack augmented with auxiliary state.</p>
+<p>The mental model is simple: every time a new element arrives, ask, “Does this change the minimum?” If yes, record that change somewhere. If no, keep the existing minimum unchanged. The common mistake is to store only the current minimum value and forget how to restore the old one after popping it.</p>
+
+<h2>Step 3 — Brute Force Solution</h2>
+<p>The naive idea is to store all elements in one stack or array. <code>push</code>, <code>pop</code>, and <code>top</code> are easy. But <code>getMin</code> would scan the entire structure each time.</p>
+<pre>push(x):
+    stack.append(x)
+
+pop():
+    stack.pop()
+
+top():
+    return stack[-1]
+
+getMin():
+    ans = +infinity
+    for value in stack:
+        ans = min(ans, value)
+    return ans</pre>
+<p><b>Time Complexity:</b> <code>push</code>, <code>pop</code>, and <code>top</code> are <code>O(1)</code>. <code>getMin</code> is <code>O(n)</code> because it inspects every element. If you call <code>getMin</code> repeatedly, the total cost becomes expensive very quickly.</p>
+<p><b>Space Complexity:</b> <code>O(n)</code> for storing the stack itself.</p>
+<p><b>Bottleneck:</b> The expensive part is repeatedly recomputing the minimum from scratch. That work is avoidable because the minimum changes in a very structured way.</p>
+
+<h2>Step 4 — Intuition Building</h2>
+
+<h3>Test Case 1</h3>
+<p><b>Input:</b> push(5), getMin(), top(), pop()</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;Current state: only one element exists, so the minimum is trivially 5</p>
+<p><b>Action:</b> Every query is immediate, because there is nothing to compare against</p>
+<p><b>Result:</b> <code>getMin = 5</code>, <code>top = 5</code></p>
+
+<h3>Test Case 2</h3>
+<p><b>Input:</b> push(5), push(3), push(7), getMin(), pop(), getMin()</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;Current state: the minimum changes when 3 arrives, then stays 3 after 7 arrives</p>
+<p><b>Action:</b> A brute-force solution would rescan 3 elements on every <code>getMin</code></p>
+<p><b>Result:</b> <code>getMin = 3</code>, and after popping 7, the minimum is still 3</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;Insight: the minimum only changes when a new smaller value arrives or when the current minimum is removed. That means you do not need to rescan the whole stack; you only need a history of minimum changes.</p>
+
+<h3>Test Case 3 (Edge Case)</h3>
+<p><b>Input:</b> push(2), push(2), push(1), pop(), getMin()</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;Current state: duplicate minima exist before 1 arrives</p>
+<p><b>Action:</b> If you only remember the latest minimum, popping 1 must restore the previous minimum 2 correctly</p>
+<p><b>Result:</b> <code>getMin = 2</code></p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;Signal for future problems: when a query asks for an aggregate like minimum or maximum repeatedly over a changing stack, think about preserving the <i>history of extrema</i> rather than recomputing them.</p>
+
+<h2>Step 5 — Optimized Solution 1 (Intermediate)</h2>
+<p>The first real optimization is to keep a second stack that stores the minimum seen so far at each depth. The main stack stores values, and the min stack stores a non-increasing sequence of minima.</p>
+<p>On <code>push(x)</code>, push <code>x</code> onto the main stack. If the min stack is empty or <code>x &lt;= minStack.top()</code>, also push <code>x</code> onto the min stack. On <code>pop()</code>, pop from the main stack, and if the removed value equals <code>minStack.top()</code>, pop the min stack too. Then <code>top()</code> reads from the main stack, and <code>getMin()</code> reads from the min stack.</p>
+<pre>push(x):
+    main.push(x)
+    if minStack is empty or x <= minStack.top():
+        minStack.push(x)
+
+pop():
+    x = main.top()
+    main.pop()
+    if x == minStack.top():
+        minStack.pop()
+
+top():
+    return main.top()
+
+getMin():
+    return minStack.top()</pre>
+<p><b>Time Complexity:</b> Every operation is <code>O(1)</code>. The min stack removes the need to scan the full stack.</p>
+<p><b>Space Complexity:</b> <code>O(n)</code> in the worst case, because the min stack may store many elements, for example in a strictly decreasing sequence.</p>
+<p><b>What was eliminated:</b> The full scan on every <code>getMin</code>. The price paid is an extra stack that mirrors the minimum history.</p>
+
+<h2>Step 5 — Optimized Solution 2 (Best Known / Fully Optimal)</h2>
+<p>The further insight is that you do not actually need a second stack. You can encode “new minimum” information directly inside the values stored in one stack.</p>
+<p>Keep one stack and one variable <code>mn</code> for the current minimum. When a new value <code>x</code> is at least the current minimum, store it normally. When <code>x</code> is smaller than the current minimum, store a special encoded number <code>2*x - mn</code>, then update <code>mn = x</code>. That encoded number is guaranteed to be smaller than the new minimum, so it acts like a marker.</p>
+<p>On pop, if the top value is smaller than <code>mn</code>, it means the top is an encoded marker, not the real value. In that case, the real top value is the current minimum, and the previous minimum can be restored by <code>oldMn = 2*mn - encodedTop</code>.</p>
+<p><b>Why this works:</b> The encoded number preserves enough information to recover both the popped minimum and the previous minimum. So the stack keeps the order of elements and the minimum history at the same time.</p>
+<p><b>Why not just store the minimum value once?</b> Because after popping the minimum, you would lose the previous minimum. That is the exact bug the encoded trick fixes.</p>
+
+<pre>class MinStack {
+    stack&lt;long long&gt; st;
+    long long mn;
+
+public:
+    MinStack() : mn(0) {}
+
+    void push(int val) {
+        long long x = val;
+        if (st.empty()) {
+            st.push(x);
+            mn = x;
+            return;
+        }
+
+        if (x &gt;= mn) {
+            st.push(x);
+        } else {
+            st.push(2LL * x - mn);
+            mn = x;
+        }
+    }
+
+    void pop() {
+        long long t = st.top();
+        st.pop();
+
+        if (st.empty()) {
+            mn = 0;
+            return;
+        }
+
+        if (t &lt; mn) {
+            mn = 2LL * mn - t;
+        }
+    }
+
+    int top() {
+        long long t = st.top();
+        if (t &lt; mn) return (int)mn;
+        return (int)t;
+    }
+
+    int getMin() {
+        return (int)mn;
+    }
+};</pre>
+
+<p><b>Dry Run:</b></p>
+<p><b>Input:</b> push(5), push(3), push(7), top(), getMin(), pop(), getMin(), pop(), getMin()</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<b>Step 1 — push(5):</b> stack = [5], mn = 5</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<b>Step 2 — push(3):</b> 3 &lt; 5, so store encoded value 2*3 - 5 = 1; stack = [5, 1], mn = 3</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<b>Step 3 — push(7):</b> 7 &gt;= 3, store normally; stack = [5, 1, 7], mn = 3</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<b>Step 4 — top():</b> top is 7, which is not smaller than mn, so answer = 7</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<b>Step 5 — getMin():</b> answer = 3</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<b>Step 6 — pop():</b> remove 7, stack = [5, 1], mn stays 3</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<b>Step 7 — getMin():</b> answer = 3</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<b>Step 8 — pop():</b> remove 1, and since 1 &lt; mn, it is an encoded marker. Restore previous minimum: mn = 2*3 - 1 = 5; stack = [5]</p>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<b>Step 9 — getMin():</b> answer = 5</p>
+
+<p><b>Extreme Edge Case:</b> If all values are identical, for example push(4), push(4), push(4), every value is stored normally, and <code>getMin()</code> always returns 4. If the stack becomes empty and later receives new values, the empty check in <code>push()</code> re-initializes the minimum correctly.</p>
+<p><b>Time Complexity:</b> <code>push</code>, <code>pop</code>, <code>top</code>, and <code>getMin</code> are all <code>O(1)</code>. The encoded arithmetic is constant time.</p>
+<p><b>Space Complexity:</b> <code>O(n)</code> for the single stack, with only one extra variable for the current minimum.</p>
+<p><b>Algorithm Name:</b> This is the <b>encoded stack</b> or <b>single-stack min encoding</b> technique.</p>
+
+<hr>
+<p><b>Final Interview Takeaway:</b> The moment a problem repeatedly asks for the minimum of a structure that changes over time, think about caching the minimum history. First, a second stack gives the cleanest explanation. Then, if you want the memory-tight version, encode the minimum changes inside the stack itself.</p>
+</body>
+</html>

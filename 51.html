@@ -1,0 +1,344 @@
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    h2 {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 8px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 14px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #ddd;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 51 — N-Queens</div>
+
+  <p><i>Based on the uploaded prompt file :contentReference[oaicite:0]{index=0}.</i></p>
+
+  <h2>Step 1 — Problem Statement</h2>
+  <p>
+    <span class="label">Input:</span> An integer <b>n</b>, which represents an <b>n × n</b> chessboard.
+    You need to place <b>n queens</b> on the board so that no two queens attack each other.
+  </p>
+  <p>
+    <span class="label">Output:</span> Return <b>all distinct valid boards</b>. Each board is represented as <b>n strings</b> of length <b>n</b>, where <code>'Q'</code> means a queen and <code>'.'</code> means an empty cell.
+  </p>
+  <p>
+    <span class="label">Key Constraints:</span> The important constraint is not the board size itself, but the attack rules. A queen attacks along the same row, same column, and both diagonals. Since we place exactly one queen per row, the real search space is “which column should the queen go in for each row?”
+  </p>
+  <p>
+    <span class="label">Edge Cases:</span>
+    <br/>• <b>n = 1</b>: one queen fits trivially.
+    <br/>• <b>n = 2 or 3</b>: no solution exists.
+    <br/>• Larger n: multiple solutions, and the same partial placement can lead to a dead end many levels later.
+    <br/>• The board is empty at the start, so the first few placements must be handled carefully without assuming a valid continuation.
+  </p>
+
+  <hr />
+
+  <h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+  <p>
+    This problem is really asking for <b>all valid permutations of queen placements</b> under pairwise conflict rules.
+    The story is just a wrapper; algorithmically, it is a <b>backtracking / DFS / constraint satisfaction</b> problem.
+  </p>
+  <p>
+    The core challenge is that every choice affects future choices through <b>column</b> and <b>diagonal</b> constraints.
+    So you must explore one row at a time, reject invalid columns immediately, and backtrack the moment a partial placement becomes impossible.
+  </p>
+  <p>
+    <span class="label">Mental model:</span> Think of the board as a decision tree where each level is one row.
+    At each level, you try every column that is still safe.
+  </p>
+  <p>
+    <span class="label">Subtle trap:</span> Many candidates either scan the whole board again and again for every placement, or they forget that diagonals are as important as columns.
+    The real unlock is: <b>once you place one queen per row, you only need to track three forbidden sets</b> — used columns, main diagonals, and anti-diagonals.
+  </p>
+
+  <hr />
+
+  <h2>Step 3 — Brute Force Solution</h2>
+  <p>
+    The naive idea is: generate every possible placement of queens row by row, and after each full arrangement, check whether any two queens attack each other.
+  </p>
+
+  <pre>
+Brute Force Pseudocode
+
+generate all ways to place one queen in each row:
+    for row = 0 to n-1:
+        try every column from 0 to n-1
+
+for each complete arrangement:
+    check every pair of queens
+    if no attack exists:
+        store the board
+  </pre>
+
+  <p>
+    <span class="label">Time Complexity:</span> O(n<sup>n</sup> · n) in spirit, or O(n<sup>n+1</sup>) if you count the validation scan.
+    There are <b>n choices for each of n rows</b>, so the search space is huge.
+    The bottleneck is that most of these states are doomed, but brute force still explores them and only rejects them late.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> O(n<sup>2</sup>) for the board plus O(n) recursion depth, ignoring output storage.
+  </p>
+
+  <hr />
+
+  <h2>Step 4 — Intuition Building</h2>
+
+  <p><b>Test Case 1 — n = 1</b></p>
+  <pre>
+Input: 1
+
+    Only one cell exists.
+    One queen can be placed safely.
+
+Action: Place Q at (0,0)
+
+Result:
+Q
+  </pre>
+
+  <p><b>Test Case 2 — n = 2 or n = 3 (No Solution)</b></p>
+  <pre>
+Input: 2
+
+    Row 0: try col 0
+    Row 1: no safe column remains
+
+    Row 0: try col 1
+    Row 1: no safe column remains
+
+Action: Backtrack all the way
+
+Result: no valid board
+  </pre>
+
+  <p>
+    This is important because it proves that the algorithm must support “explore and fail” cleanly.
+    A greedy placement will not work.
+  </p>
+
+  <p><b>Test Case 3 — n = 4</b></p>
+  <pre>
+Input: 4
+
+    Start with row 0.
+    Try col 0 first.
+
+Row 0: Q . . .
+    Safe columns for row 1 are limited by:
+    - used column 0
+    - diagonals from (0,0)
+
+Row 1: try col 2
+    Row 2 now has no safe column
+    This branch dies early
+
+Action: Backtrack row 1, then row 0
+
+Now try row 0: . Q . .
+    This choice opens a valid chain later
+
+One valid path:
+Row 0 -> col 1
+Row 1 -> col 3
+Row 2 -> col 0
+Row 3 -> col 2
+
+Result:
+. Q . .
+. . . Q
+Q . . .
+. . Q .
+  </pre>
+
+  <p>
+    The key insight is visible here: you never need to re-check the whole board from scratch.
+    You only need to know whether a column or diagonal is already occupied.
+    That means the future problem pattern to recognize is:
+    <b>“place one item per level, and each placement is blocked by a small set of reusable constraints.”</b>
+  </p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution 1 (Intermediate)</h2>
+  <p>
+    The first meaningful optimization is to keep three boolean trackers:
+    one for used columns, one for main diagonals, and one for anti-diagonals.
+    Then each safety check becomes O(1).
+  </p>
+
+  <pre>
+Optimized Solution 1 Pseudocode
+
+dfs(row):
+    if row == n:
+        save the board
+        return
+
+    for col from 0 to n-1:
+        if column col is free
+           and main diagonal (row - col) is free
+           and anti-diagonal (row + col) is free:
+
+            place queen
+            mark column and diagonals
+            dfs(row + 1)
+            unplace queen
+            unmark column and diagonals
+  </pre>
+
+  <p>
+    <span class="label">What was eliminated compared to brute force:</span> repeated board-wide conflict scanning.
+    Each candidate placement is now rejected immediately if it violates a known constraint.
+  </p>
+  <p>
+    <span class="label">Time Complexity:</span> Worst-case still exponential, but much better in practice.
+    The search tree is pruned aggressively, and each check is O(1).
+    A common way to describe it is O(n!) style branching, with O(1) safety checks and O(n<sup>2</sup>) per completed board to materialize the strings.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> O(n) recursion depth plus O(n) for the constraint trackers, excluding output storage.
+  </p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution 2 (Best Known / Fully Optimal)</h2>
+  <p>
+    The next refinement is to encode the same three constraint sets using <b>bitmasks</b>.
+    This does not change the asymptotic search complexity, but it makes the checks faster and the implementation very clean.
+  </p>
+  <p>
+    <span class="label">Why bitmasks work:</span>
+    If a bit is set in <code>cols</code>, that column is occupied.
+    For diagonals, when you move from one row to the next:
+    <br/>• one diagonal threat shifts left,
+    <br/>• the other diagonal threat shifts right.
+    <br/>So the forbidden masks naturally “move” with the next row.
+  </p>
+
+  <pre>
+Optimized Solution 2 Pseudocode
+
+dfs(row, colsMask, diag1Mask, diag2Mask):
+    if row == n:
+        save board
+        return
+
+    available = fullMask & ~(colsMask | diag1Mask | diag2Mask)
+
+    while available is not zero:
+        pick lowest set bit as a candidate column
+        remove that bit from available
+        place queen in that column
+        recurse to next row with updated masks
+        remove queen
+  </pre>
+
+  <pre>
+vector&lt;vector&lt;string&gt;&gt; solveNQueens(int n) {
+    vector&lt;vector&lt;string&gt;&gt; ans;
+    vector&lt;string&gt; board(n, string(n, '.'));
+    int fullMask = (1 &lt;&lt; n) - 1;
+
+    auto dfs = [&](auto&amp;&amp; self, int row, int cols, int d1, int d2) -&gt; void {
+        if (row == n) {
+            ans.push_back(board);
+            return;
+        }
+
+        int available = fullMask &amp; ~(cols | d1 | d2);
+
+        while (available) {
+            int bit = available &amp; -available;   // lowest set bit
+            available -= bit;
+
+            int col = 0;
+            int temp = bit;
+            while ((temp &gt;&gt; 1) != 0) {
+                temp &gt;&gt;= 1;
+                ++col;
+            }
+
+            board[row][col] = 'Q';
+            self(self, row + 1, cols | bit, (d1 | bit) &lt;&lt; 1, (d2 | bit) &gt;&gt; 1);
+            board[row][col] = '.';
+        }
+    };
+
+    dfs(dfs, 0, 0, 0, 0);
+    return ans;
+}
+  </pre>
+
+  <p>
+    <span class="label">Dry run on n = 4:</span>
+    the algorithm starts with all columns available in row 0.
+    It tries one column, immediately updates the forbidden masks, and moves to row 1.
+    When a later row has no available bit left, the function returns and the previous row tries the next bit.
+    That is exactly the same logical backtracking as the set-based solution, just encoded more compactly.
+  </p>
+  <p>
+    <span class="label">Edge case handling:</span>
+    <br/>• For <b>n = 1</b>, <code>fullMask = 1</code>, the only cell is chosen and the answer is a single board.
+    <br/>• For <b>n = 2 or 3</b>, every branch dies before reaching row <code>n</code>, so the returned list stays empty.
+  </p>
+  <p>
+    <span class="label">Time Complexity:</span> Same search-space behavior as optimized backtracking, with O(1) constraint checks per candidate.
+    The dominant cost is exploring valid partial boards and constructing each full board, which is exponential in the worst case.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> O(n) recursion depth, plus the board used to build answers.
+    Excluding output storage, the auxiliary state is very small.
+  </p>
+  <p>
+    <span class="label">Algorithm name:</span> Bitmask Backtracking with Branch-and-Bound.
+  </p>
+
+  <hr />
+
+  <h2>Final Interview Takeaway</h2>
+  <p>
+    The fastest way to recognize this pattern is:
+    <b>“I need all valid arrangements, each level chooses one position, and every choice creates structural constraints for future levels.”</b>
+    That should immediately point you to backtracking with constraint tracking.
+  </p>
+</body>
+</html>

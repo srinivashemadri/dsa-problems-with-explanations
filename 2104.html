@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 2104 — Sum of Subarray Ranges</title>
+  <style>
+    body {
+      font-family: "Times New Roman", serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    h2 {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 10px 0;
+    }
+    ul {
+      margin: 8px 0 8px 24px;
+    }
+    li {
+      margin: 4px 0;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .small {
+      font-size: 11pt;
+    }
+    .testcase {
+      margin: 14px 0 18px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 2104 — Sum of Subarray Ranges</div>
+
+  <h2>Step 1 — Problem Statement</h2>
+  <p><span class="label">Input:</span> an integer array <code>nums</code>. A subarray means any contiguous slice of that array.</p>
+  <p><span class="label">Output:</span> the sum, over every subarray, of <code>max(subarray) - min(subarray)</code>.</p>
+  <p><span class="label">Key Constraints:</span> the array can contain duplicates and negative values, so the solution must handle ties correctly. The values can be large enough that the final answer should be stored in 64-bit arithmetic.</p>
+  <p><span class="label">Edge Cases:</span></p>
+  <ul>
+    <li>A single element array gives 0, because every subarray has max = min.</li>
+    <li>All elements equal also gives 0.</li>
+    <li>Strictly increasing or strictly decreasing arrays still need careful handling because many subarrays share the same max or min.</li>
+    <li>Duplicates are the subtle trap: a subarray with repeated max/min values must be counted exactly once, not twice.</li>
+    <li>Large values require <code>long long</code> to avoid overflow.</li>
+  </ul>
+
+  <hr />
+
+  <h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+  <p>
+    This is not really asking for anything about “ranges” as a geometric object.
+    It is asking for the total spread of every contiguous interval.
+    For each subarray, compute the largest value and the smallest value, subtract them, and add that difference to the answer.
+  </p>
+  <p>
+    The core algorithmic challenge is avoiding repeated work.
+    A naive solution recomputes max and min for the same elements again and again across overlapping subarrays.
+  </p>
+  <p><span class="label">Category:</span> subarray / contribution counting / monotonic stack.</p>
+  <p>
+    <span class="label">Mental model:</span> instead of asking, “what is the max and min of each subarray?”, ask,
+    “for how many subarrays is this element the maximum, and for how many subarrays is it the minimum?”
+    Once you know that, each element’s contribution can be counted directly.
+  </p>
+  <p>
+    <span class="label">Common trap:</span> handling duplicates incorrectly.
+    If you use the same strictness on both sides of a monotonic boundary, you either overcount or undercount equal values.
+  </p>
+
+  <hr />
+
+  <h2>Step 3 — Brute Force Solution</h2>
+  <p>
+    The most direct solution is to enumerate every subarray, scan it to find the minimum and maximum, and add the difference.
+    That is correct, but it repeats the same comparisons many times.
+  </p>
+
+  <pre>answer = 0
+for l from 0 to n - 1:
+    for r from l to n - 1:
+        curMin = +infinity
+        curMax = -infinity
+        for k from l to r:
+            curMin = min(curMin, nums[k])
+            curMax = max(curMax, nums[k])
+        answer += curMax - curMin
+return answer</pre>
+
+  <p><span class="label">Time Complexity:</span> <code>O(n^3)</code>. There are <code>O(n^2)</code> subarrays, and each one may scan up to <code>O(n)</code> elements.</p>
+  <p><span class="label">Space Complexity:</span> <code>O(1)</code>.</p>
+  <p>
+    <span class="label">Bottleneck:</span> the inner scan for every subarray.
+    The same elements get rescanned over and over.
+  </p>
+
+  <hr />
+
+  <h2>Step 4 — Intuition Building</h2>
+
+  <div class="testcase">
+    <p><span class="label">Test Case 1</span></p>
+    <pre>Input: 1 2 3
+    Subarrays:
+    [1] -> range 0
+    [1,2] -> range 1
+    [1,2,3] -> range 2
+    [2] -> range 0
+    [2,3] -> range 1
+    [3] -> range 0
+
+Action:
+    Compute every subarray directly and add all ranges.
+
+Result:
+    Total = 0 + 1 + 2 + 0 + 1 + 0 = 4</pre>
+    <p>
+      Observation: the same values participate in many overlapping subarrays.
+      That repeated work is exactly what we want to eliminate.
+    </p>
+  </div>
+
+  <div class="testcase">
+    <p><span class="label">Test Case 2</span></p>
+    <pre>Input: 2 2
+    Subarrays:
+    [2] -> range 0
+    [2,2] -> range 0
+    [2] -> range 0
+
+Action:
+    The answer is still 0, but duplicates expose the real issue:
+    if both equal 2s try to claim the same subarray as the maximum or minimum,
+    the counting logic breaks.
+
+Result:
+    Total = 0</pre>
+    <p>
+      This is the key insight: when counting contributions, one side must be strict and the other side must be non-strict.
+      That guarantees equal values are assigned consistently to exactly one index.
+    </p>
+  </div>
+
+  <div class="testcase">
+    <p><span class="label">Test Case 3</span></p>
+    <pre>Input: 3 1 2
+    Subarrays:
+    [3] -> 0
+    [3,1] -> 2
+    [3,1,2] -> 2
+    [1] -> 0
+    [1,2] -> 1
+    [2] -> 0
+
+Action:
+    The maximum and minimum of overlapping windows are not independent.
+    The same element keeps reappearing as max or min across many intervals.
+
+Result:
+    Total = 5</pre>
+    <p>
+      This is where the problem starts to look like a contribution problem:
+      each element should be counted by how many subarrays it dominates as max or min.
+    </p>
+  </div>
+
+  <p>
+    <span class="label">What signal should make you think of this approach immediately?</span>
+    Any time a problem asks for a total over all subarrays or intervals, and each interval’s answer depends on min/max,
+    think about element-wise contribution counting with monotonic stacks.
+  </p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution 1 (Intermediate)</h2>
+  <p>
+    A natural improvement over brute force is to fix the left boundary and expand the right boundary while maintaining the running minimum and maximum.
+    When the right end moves one step, min and max can be updated in <code>O(1)</code>.
+  </p>
+
+  <pre>answer = 0
+for l from 0 to n - 1:
+    curMin = +infinity
+    curMax = -infinity
+    for r from l to n - 1:
+        curMin = min(curMin, nums[r])
+        curMax = max(curMax, nums[r])
+        answer += curMax - curMin
+return answer</pre>
+
+  <p><span class="label">Time Complexity:</span> <code>O(n^2)</code>. The outer loop chooses the left boundary, and the inner loop walks the right boundary once.</p>
+  <p><span class="label">Space Complexity:</span> <code>O(1)</code>.</p>
+  <p>
+    <span class="label">What was eliminated:</span> the extra scan inside each subarray.
+    We still examine all subarrays, but we no longer recompute min and max from scratch for each one.
+  </p>
+
+  <h2>Step 5 — Optimized Solution 2 (Best Known / Fully Optimal)</h2>
+  <p>
+    The fully optimal idea is to count contributions.
+    The total answer is:
+    <br />
+    <strong>sum of all subarray maximum contributions</strong> minus <strong>sum of all subarray minimum contributions</strong>.
+  </p>
+  <p>
+    For each index <code>i</code>, count how many subarrays choose <code>nums[i]</code> as the maximum.
+    The same is done for minimum.
+    The count is a product of:
+    <br />
+    <code>number of choices for the left boundary</code> × <code>number of choices for the right boundary</code>.
+  </p>
+  <p>
+    For maxima, use:
+    <br />
+    previous strictly greater element on the left,
+    <br />
+    next greater-or-equal element on the right.
+  </p>
+  <p>
+    For minima, use:
+    <br />
+    previous strictly smaller element on the left,
+    <br />
+    next smaller-or-equal element on the right.
+  </p>
+  <p>
+    That strict / non-strict asymmetry is the tie-break rule that prevents duplicate values from being counted twice.
+    One equal value “owns” the subarray, and the other does not.
+  </p>
+
+  <p><span class="label">Pseudocode:</span></p>
+  <pre>1. Compute previous greater element index for every position.
+2. Compute next greater-or-equal element index for every position.
+3. Compute previous smaller element index for every position.
+4. Compute next smaller-or-equal element index for every position.
+5. For each i:
+       maxContribution = nums[i] * (i - prevGreater[i]) * (nextGreaterEq[i] - i)
+       minContribution = nums[i] * (i - prevSmaller[i]) * (nextSmallerEq[i] - i)
+6. Return sum(maxContribution) - sum(minContribution)</pre>
+
+  <p><span class="label">C++17 Code:</span></p>
+  <pre>long long subArrayRanges(vector&lt;int&gt;&amp; nums) {
+    int n = (int)nums.size();
+    vector&lt;int&gt; prevGreater(n), nextGreaterEq(n), prevSmaller(n), nextSmallerEq(n);
+    stack&lt;int&gt; st;
+
+    // Previous greater (strictly greater)
+    for (int i = 0; i &lt; n; ++i) {
+        while (!st.empty() &amp;&amp; nums[st.top()] &lt;= nums[i]) st.pop();
+        prevGreater[i] = st.empty() ? -1 : st.top();
+        st.push(i);
+    }
+
+    while (!st.empty()) st.pop();
+
+    // Next greater or equal
+    for (int i = n - 1; i &gt;= 0; --i) {
+        while (!st.empty() &amp;&amp; nums[st.top()] &lt; nums[i]) st.pop();
+        nextGreaterEq[i] = st.empty() ? n : st.top();
+        st.push(i);
+    }
+
+    while (!st.empty()) st.pop();
+
+    // Previous smaller (strictly smaller)
+    for (int i = 0; i &lt; n; ++i) {
+        while (!st.empty() &amp;&amp; nums[st.top()] &gt;= nums[i]) st.pop();
+        prevSmaller[i] = st.empty() ? -1 : st.top();
+        st.push(i);
+    }
+
+    while (!st.empty()) st.pop();
+
+    // Next smaller or equal
+    for (int i = n - 1; i &gt;= 0; --i) {
+        while (!st.empty() &amp;&amp; nums[st.top()] &gt; nums[i]) st.pop();
+        nextSmallerEq[i] = st.empty() ? n : st.top();
+        st.push(i);
+    }
+
+    long long maxSum = 0, minSum = 0;
+
+    for (int i = 0; i &lt; n; ++i) {
+        long long leftMax = i - prevGreater[i];
+        long long rightMax = nextGreaterEq[i] - i;
+        maxSum += 1LL * nums[i] * leftMax * rightMax;
+
+        long long leftMin = i - prevSmaller[i];
+        long long rightMin = nextSmallerEq[i] - i;
+        minSum += 1LL * nums[i] * leftMin * rightMin;
+    }
+
+    return maxSum - minSum;
+}</pre>
+
+  <p><span class="label">Dry Run on a meaningful case:</span></p>
+  <pre>Input: 1 3 3
+
+Pivot idea:
+    Equal values must not both claim the same subarrays.
+    We use strict on the left and non-strict on the right.
+
+For maxima:
+    Index 0 (1):
+        previous greater = none
+        next greater-or-equal = index 1
+        left choices = 1
+        right choices = 1
+        contribution as max = 1 * 1 * 1 = 1
+
+    Index 1 (3):
+        previous greater = none
+        next greater-or-equal = index 2
+        left choices = 2
+        right choices = 1
+        contribution as max = 3 * 2 * 1 = 6
+
+    Index 2 (3):
+        previous greater = none
+        next greater-or-equal = none
+        left choices = 3
+        right choices = 1
+        contribution as max = 3 * 3 * 1 = 9
+
+    maxSum = 16
+
+For minima:
+    Index 0 (1):
+        previous smaller = none
+        next smaller-or-equal = none
+        left choices = 1
+        right choices = 3
+        contribution as min = 1 * 1 * 3 = 3
+
+    Index 1 (3):
+        previous smaller = index 0
+        next smaller-or-equal = index 2
+        left choices = 1
+        right choices = 1
+        contribution as min = 3 * 1 * 1 = 3
+
+    Index 2 (3):
+        previous smaller = index 0
+        next smaller-or-equal = none
+        left choices = 2
+        right choices = 1
+        contribution as min = 3 * 2 * 1 = 6
+
+    minSum = 12
+
+Final answer:
+    16 - 12 = 4</pre>
+
+  <p>
+    <span class="label">Why this handles the all-equal edge case correctly:</span>
+    if the array is <code>5 5 5</code>, every subarray has max = min, so the answer must be 0.
+    With the strict/non-strict boundary choice, the max and min contributions are both counted consistently and cancel out exactly.
+  </p>
+
+  <p><span class="label">Time Complexity:</span> <code>O(n)</code>. Each index is pushed and popped at most once in each monotonic scan, so all four boundary passes are linear, and the final contribution pass is also linear.</p>
+  <p><span class="label">Space Complexity:</span> <code>O(n)</code>. We store four boundary arrays and a stack.</p>
+  <p><span class="label">Algorithm name:</span> monotonic stack contribution counting.</p>
+
+  <hr />
+
+  <h2>Final Interview-Ready Summary</h2>
+  <p>
+    The brute-force way is to inspect every subarray and compute its min and max directly.
+    The stronger idea is to realize that every element contributes to many subarrays as the minimum or maximum.
+    Once you count those contributions with monotonic stacks, the answer becomes linear.
+  </p>
+  <p>
+    The subtle part is tie-handling for duplicates.
+    Choose one side strict and the other side non-strict, and keep that rule consistent for both minima and maxima.
+  </p>
+
+  <p class="small"><em>Requested LC workflow and formatting were followed from the attached instruction file. :contentReference[oaicite:0]{index=0}</em></p>
+</body>
+</html>

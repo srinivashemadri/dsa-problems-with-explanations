@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 907 — Sum of Subarray Minimums</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 22px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    .subsection {
+      font-size: 12.5pt;
+      font-weight: bold;
+      margin-top: 18px;
+      margin-bottom: 6px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 14px 0;
+    }
+    .note {
+      margin-top: 6px;
+    }
+    .case {
+      margin-top: 14px;
+      margin-bottom: 14px;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 24px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 907 — Sum of Subarray Minimums</div>
+
+  <p class="note"><em>This answer follows your uploaded LC 907 workflow prompt.</em> :contentReference[oaicite:0]{index=0}</p>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <strong>Input:</strong> You are given an integer array <strong>arr</strong>. For every contiguous subarray, you must find its minimum element.
+    The task is to compute the sum of those minimums across all subarrays.
+  </p>
+  <p>
+    <strong>Output:</strong> Return that total sum, usually modulo <strong>1,000,000,007</strong> because the answer can become very large.
+  </p>
+  <p>
+    <strong>Key Constraints:</strong> The array can be large enough that an O(n<sup>2</sup>) or O(n<sup>3</sup>) approach becomes too slow.
+    The values are positive, but duplicates are allowed, which is the part that breaks many clean-looking solutions.
+    Because the final answer can exceed 32-bit integer range, the implementation must use 64-bit arithmetic before applying modulo.
+  </p>
+  <p>
+    <strong>Edge Cases:</strong> A single-element array, all elements equal, strictly increasing arrays, strictly decreasing arrays, and arrays with repeated minimum values are the cases that matter most.
+    The duplicate case is especially tricky because one subarray minimum can be “claimed” by two equal elements unless tie-breaking is handled carefully.
+  </p>
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    This is not really a “scan every subarray” problem. It is a <strong>contribution-counting</strong> problem.
+    Instead of asking, “What is the minimum of this subarray?”, the better question is, “How many subarrays treat this element as their minimum?”
+  </p>
+  <p>
+    The core challenge is to avoid recomputing the minimum from scratch for each subarray.
+    The problem category is <strong>monotonic stack + contribution technique</strong>.
+    The mental model should be: every element owns a block of subarrays where it is the smallest value, and the size of that block is determined by the nearest smaller element on the left and the nearest smaller-or-equal element on the right.
+  </p>
+  <p>
+    The subtle trap is duplicates. If you use the same comparison rule on both sides, equal values will either be counted twice or missed.
+    A correct solution must break ties consistently on only one side.
+  </p>
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The most naive solution is to enumerate every subarray and compute its minimum independently.
+    That is the cleanest starting point, but it is far too slow.
+  </p>
+  <pre>
+for i from 0 to n - 1:
+    for j from i to n - 1:
+        minValue = +infinity
+        for k from i to j:
+            minValue = min(minValue, arr[k])
+        answer += minValue
+  </pre>
+  <p>
+    <strong>Time Complexity:</strong> O(n<sup>3</sup>) because there are O(n<sup>2</sup>) subarrays and each one recomputes the minimum by scanning the range again.
+  </p>
+  <p>
+    <strong>Space Complexity:</strong> O(1), because no extra data structure is required beyond a few variables.
+  </p>
+  <p>
+    <strong>Performance Bottleneck:</strong> The same subarray values are inspected again and again. The minimum for overlapping ranges is recomputed repeatedly instead of being reused.
+  </p>
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <div class="case">
+    <div class="subsection">Test Case 1</div>
+    <p>
+      <strong>Input:</strong> 7
+    </p>
+    <p>
+      One element means only one subarray exists: [7].
+      There is nothing to compare against, so the element is automatically the minimum.
+    </p>
+    <p>
+      <strong>Action:</strong> Count that single subarray.
+    </p>
+    <p>
+      <strong>Result:</strong> 7
+    </p>
+    <p>
+      This case shows the base behavior: an element always contributes at least once, because every element is the minimum of the subarray containing only itself.
+    </p>
+  </div>
+
+  <div class="case">
+    <div class="subsection">Test Case 2</div>
+    <p>
+      <strong>Input:</strong> 3 1 2 4
+    </p>
+    <p>
+      The subarrays are many, but the key observation is that the value 1 is very powerful: it becomes the minimum for every subarray that includes it and does not extend past a smaller value on either side.
+      Since nothing is smaller than 1, it gets a wide range of ownership.
+    </p>
+    <p>
+      <strong>Action:</strong> Think in terms of ownership blocks.
+      For the element 1, the previous smaller element does not exist, and the next smaller element does not exist.
+      That means it can extend across the full left and right freedom inside the array.
+    </p>
+    <p>
+      <strong>Result:</strong> 1 contributes to many subarrays, not just one.
+      This is the discovery: you do not need to inspect every subarray separately if you can count how far each element can expand before a smaller value blocks it.
+    </p>
+    <p>
+      In this array, every element’s contribution can be written as:
+    </p>
+    <pre>
+contribution of arr[i] = arr[i] * (# choices on left) * (# choices on right)
+    </pre>
+    <p>
+      That is the shape of the optimized solution.
+    </p>
+  </div>
+
+  <div class="case">
+    <div class="subsection">Test Case 3 (Duplicate Edge Case)</div>
+    <p>
+      <strong>Input:</strong> 2 2
+    </p>
+    <p>
+      The subarrays are [2], [2], and [2 2].
+      The subarray [2 2] has the same minimum value from both positions, so a naive “count all possible minima” idea would double count it.
+    </p>
+    <p>
+      <strong>Action:</strong> Break ties consistently.
+      One valid rule is: use <strong>previous strictly smaller</strong> on the left and <strong>next smaller-or-equal</strong> on the right.
+      Then equal values are assigned to one side only, so each subarray is counted exactly once.
+    </p>
+    <p>
+      <strong>Result:</strong> No double counting.
+      The rightmost equal element can own the tied subarray, and the left equal element stops before overlapping ownership.
+    </p>
+    <p>
+      This is the exact signal that should make you think of the same approach in future problems:
+      whenever you need the sum of a local extremum over all subarrays, think <strong>monotonic stack + contribution counting</strong>.
+    </p>
+  </div>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution 1 (Intermediate)</div>
+  <p>
+    The first useful optimization is to avoid re-scanning every subarray from scratch.
+    While expanding a subarray end by end, keep track of the running minimum.
+    That immediately removes one nested scan.
+  </p>
+  <pre>
+for i from 0 to n - 1:
+    currentMin = +infinity
+    for j from i to n - 1:
+        currentMin = min(currentMin, arr[j])
+        answer += currentMin
+  </pre>
+  <p>
+    <strong>What was eliminated:</strong> the inner recomputation of the minimum for each subarray.
+    Once a subarray is extended by one element, its minimum can be updated in O(1).
+  </p>
+  <p>
+    <strong>Time Complexity:</strong> O(n<sup>2</sup>) because there are O(n<sup>2</sup>) subarrays, and each extension now updates the minimum in constant time.
+  </p>
+  <p>
+    <strong>Space Complexity:</strong> O(1).
+  </p>
+  <p>
+    This version is still too slow for the largest inputs, but it builds the bridge from brute force to the real insight.
+  </p>
+
+  <div class="section">Step 5 — Optimized Solution 2 (Best Known / Fully Optimal)</div>
+  <p>
+    <strong>Algorithm:</strong> Monotonic increasing stack + contribution counting.
+  </p>
+  <p>
+    The key insight is this:
+    for each element arr[i], count how many subarrays choose arr[i] as their minimum.
+    If the previous strictly smaller element is at index p, and the next smaller-or-equal element is at index q, then:
+  </p>
+  <p>
+    Left choices = i - p<br/>
+    Right choices = q - i<br/>
+    Contribution = arr[i] × Left choices × Right choices
+  </p>
+
+  <pre>
+int sumSubarrayMins(vector&lt;int&gt;&amp; arr) {
+    const int MOD = 1'000'000'007;
+    int n = (int)arr.size();
+    vector&lt;long long&gt; left(n), right(n);
+    stack&lt;int&gt; st;
+
+    // Previous strictly smaller element
+    for (int i = 0; i &lt; n; ++i) {
+        while (!st.empty() &amp;&amp; arr[st.top()] &gt;= arr[i]) st.pop();
+        int prevLess = st.empty() ? -1 : st.top();
+        left[i] = i - prevLess;
+        st.push(i);
+    }
+
+    while (!st.empty()) st.pop();
+
+    // Next smaller-or-equal element
+    for (int i = n - 1; i &gt;= 0; --i) {
+        while (!st.empty() &amp;&amp; arr[st.top()] &gt; arr[i]) st.pop();
+        int nextLessOrEqual = st.empty() ? n : st.top();
+        right[i] = nextLessOrEqual - i;
+        st.push(i);
+    }
+
+    long long ans = 0;
+    for (int i = 0; i &lt; n; ++i) {
+        ans = (ans + (left[i] * right[i] % MOD) * arr[i]) % MOD;
+    }
+
+    return (int)ans;
+}
+  </pre>
+
+  <p>
+    The reason for using <strong>&gt;=</strong> on the left pass and <strong>&gt;</strong> on the right pass is tie-breaking.
+    Equal elements must not both claim the same subarray.
+    This convention assigns tied ownership to the rightmost equal element.
+    A symmetric alternative also works, but the two sides must not use the same strictness.
+  </p>
+
+  <div class="subsection">Dry Run on 3 1 2 4</div>
+  <p><strong>Input:</strong> 3 1 2 4</p>
+  <p><strong>Left pass: previous strictly smaller</strong></p>
+  <pre>
+i = 0, arr[i] = 3
+    stack empty
+    prevLess = -1
+    left[0] = 0 - (-1) = 1
+    push 0
+
+i = 1, arr[i] = 1
+    pop 0 because arr[0] >= 1
+    stack empty
+    prevLess = -1
+    left[1] = 1 - (-1) = 2
+    push 1
+
+i = 2, arr[i] = 2
+    top = 1, arr[1] = 1 < 2
+    prevLess = 1
+    left[2] = 2 - 1 = 1
+    push 2
+
+i = 3, arr[i] = 4
+    top = 2, arr[2] = 2 < 4
+    prevLess = 2
+    left[3] = 3 - 2 = 1
+    push 3
+  </pre>
+
+  <p><strong>Right pass: next smaller-or-equal</strong></p>
+  <pre>
+i = 3, arr[i] = 4
+    stack empty
+    nextLessOrEqual = 4
+    right[3] = 4 - 3 = 1
+    push 3
+
+i = 2, arr[i] = 2
+    pop 3 because arr[3] > 2
+    stack empty
+    nextLessOrEqual = 4
+    right[2] = 4 - 2 = 2
+    push 2
+
+i = 1, arr[i] = 1
+    pop 2 because arr[2] > 1
+    stack empty
+    nextLessOrEqual = 4
+    right[1] = 4 - 1 = 3
+    push 1
+
+i = 0, arr[i] = 3
+    top = 1, arr[1] = 1 is not > 3
+    nextLessOrEqual = 1
+    right[0] = 1 - 0 = 1
+    push 0
+  </pre>
+
+  <p><strong>Contributions</strong></p>
+  <pre>
+arr[0] = 3  -> 3 * 1 * 1 = 3
+arr[1] = 1  -> 1 * 2 * 3 = 6
+arr[2] = 2  -> 2 * 1 * 2 = 4
+arr[3] = 4  -> 4 * 1 * 1 = 4
+
+Total = 3 + 6 + 4 + 4 = 17
+  </pre>
+
+  <div class="subsection">Dry Run on 2 2 (Duplicate Edge Case)</div>
+  <p><strong>Input:</strong> 2 2</p>
+  <p>
+    The duplicate is the important part. The tie-break rule ensures the subarray [2 2] is counted once, not twice.
+  </p>
+  <pre>
+Left pass:
+i = 0 -> left[0] = 1
+i = 1 -> pop index 0 because arr[0] >= arr[1]
+         prevLess = -1
+         left[1] = 2
+
+Right pass:
+i = 1 -> right[1] = 1
+i = 0 -> nextLessOrEqual = 1
+         right[0] = 1
+  </pre>
+  <p><strong>Contributions</strong></p>
+  <pre>
+arr[0] = 2 -> 2 * 1 * 1 = 2
+arr[1] = 2 -> 2 * 2 * 1 = 4
+
+Total = 6
+  </pre>
+  <p>
+    This matches the three subarrays: [2], [2], and [2 2], whose minimums are 2, 2, and 2.
+  </p>
+
+  <div class="subsection">Why This Works</div>
+  <p>
+    Every subarray has exactly one representative minimum under the tie-breaking rule.
+    For each index i, the left boundary can move anywhere after the previous smaller element, and the right boundary can move anywhere before the next smaller-or-equal element.
+    Those choices are independent, so the count is the product of the two spans.
+  </p>
+
+  <div class="subsection">Handling the Tricky Parts</div>
+  <p>
+    <strong>Why previous strictly smaller?</strong> Because it gives a clean left boundary that stops only when a genuinely smaller value appears.
+  </p>
+  <p>
+    <strong>Why next smaller-or-equal?</strong> Because equal values need a deterministic owner. Allowing equality only on one side prevents double counting.
+  </p>
+  <p>
+    <strong>Why long long?</strong> The number of subarrays can be large, and multiplying span lengths by the value can exceed 32-bit range before modulo is applied.
+  </p>
+
+  <div class="subsection">Complexity Analysis</div>
+  <p>
+    <strong>Time Complexity:</strong> O(n). Each index is pushed and popped at most once in each stack pass, so the total work stays linear.
+  </p>
+  <p>
+    <strong>Space Complexity:</strong> O(n) for the left/right arrays and the stack.
+  </p>
+
+  <div class="subsection">Interview Signal to Remember</div>
+  <p>
+    Whenever a problem asks for the sum of minimums or maximums over all subarrays, do not start by enumerating subarrays.
+    Think instead: <strong>Can I count how many subarrays each element owns as the extremum?</strong>
+    If the answer is yes, a monotonic stack is usually the right tool.
+  </p>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 1539 - Kth Missing Positive Number</title>
+</head>
+<body style="font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.8; max-width: 760px; margin: 40px auto; color: #000;">
+  <div style="text-align: center; font-size: 14pt; font-weight: bold;">LeetCode 1539 — Kth Missing Positive Number</div>
+
+  <hr />
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> A strictly increasing sorted array of positive integers <b>arr</b>, and a positive integer <b>k</b>.
+    The array contains some positive numbers, but not all of them. The missing positive numbers are the positive integers
+    that do not appear in the array.
+  </p>
+  <p>
+    <b>Output:</b> Return the <b>kth missing positive number</b>.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The array is sorted in strictly increasing order, so every next element is larger than the previous one.
+    That single fact is the reason the problem can be solved efficiently. Also, the numbers are positive, which means the missing
+    sequence starts from 1 and grows upward.
+  </p>
+  <p>
+    <b>Edge Cases:</b> The kth missing number may be before the first array element, inside a gap between two array elements,
+    or after the last array element. There may be no gap at all in the array, the array may have only one element, and k may be
+    small enough that the answer is very close to the beginning.
+  </p>
+
+  <hr />
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    What this problem is really asking is: <b>among all positive integers, find the kth one that is absent from a sorted list of present numbers.</b>
+    The story is not important. The core challenge is that the missing numbers are not explicitly stored, so we must infer them from gaps.
+  </p>
+  <p>
+    This is a <b>sorted array + monotonic count</b> problem. The instinctive mental model is to stop thinking about every number one by one and instead
+    think about <b>how many numbers are missing up to a certain index</b>.
+  </p>
+  <p>
+    The subtle trap most candidates fall into is counting missing numbers by brute force from 1 upward without using the sorted structure.
+    Another common mistake is getting the indexing wrong when computing how many numbers are missing before <i>arr[i]</i>.
+  </p>
+
+  <hr />
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 3 — Brute Force Solution</div>
+  <p>
+    The most naive way is to check positive integers one by one, and for each candidate, scan the array to see whether it exists.
+    Every time a candidate does not exist in the array, it is a missing positive number. Keep counting until you reach the kth one.
+  </p>
+
+  <p><b>Pseudocode:</b></p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">candidate = 1
+while k &gt; 0:
+    if candidate is not present in arr:
+        k = k - 1
+    candidate = candidate + 1
+
+return candidate - 1</pre>
+
+  <p>
+    <b>Time Complexity:</b> O(M &times; n), where M is the value range we need to scan until the kth missing number appears.
+    For every candidate, we may scan the whole array to check existence. This becomes slow because we repeatedly inspect the same array
+    for every positive integer.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1) if we do a direct linear scan for membership.
+  </p>
+  <p>
+    <b>Performance Bottleneck:</b> The bottleneck is not the counting itself; it is the repeated checking of each integer one by one.
+    That ignores the sorted order and wastes work on numbers we could have skipped in bulk.
+  </p>
+
+  <hr />
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 4 — Intuition Building</div>
+  <p>
+    The key discovery is that the array already tells us where the missing numbers are: in the gaps.
+    Instead of checking every positive integer, we inspect how many numbers are absent before each array element.
+  </p>
+
+  <p style="margin-top: 18px; font-weight: bold;">Test Case 1</p>
+  <p style="margin-top: 0;">
+    Input: 2 3 4 7 11, k = 5
+  </p>
+  <p style="margin-top: 0;">
+    Current state: the gaps are 1, then 5 6, then 8 9 10, and so on.
+  </p>
+  <p style="margin-top: 0;">
+    Action: count missing numbers in order — 1, 5, 6, 8, 9, ...
+  </p>
+  <p style="margin-top: 0;">
+    Result: the 5th missing positive number is 9.
+  </p>
+  <p>
+    Observation: brute force would still test 1, 2, 3, 4, 5, 6, 7, 8, 9 individually. The pattern is clearly in the gaps, so the work should be done per gap, not per integer.
+  </p>
+
+  <p style="margin-top: 18px; font-weight: bold;">Test Case 2</p>
+  <p style="margin-top: 0;">
+    Input: 1 2 3 4, k = 2
+  </p>
+  <p style="margin-top: 0;">
+    Current state: there is no missing number before or between the array elements.
+  </p>
+  <p style="margin-top: 0;">
+    Action: keep moving past the last element; the missing numbers continue after 4.
+  </p>
+  <p style="margin-top: 0;">
+    Result: missing numbers are 5, 6, ... so the answer is 6.
+  </p>
+  <p>
+    Observation: this is the edge case where the answer lies after the last array value. Any solution that only looks for internal gaps will fail here.
+  </p>
+
+  <p style="margin-top: 18px; font-weight: bold;">Test Case 3</p>
+  <p style="margin-top: 0;">
+    Input: 5 6 7, k = 2
+  </p>
+  <p style="margin-top: 0;">
+    Current state: the first gap is before the array starts. Missing numbers begin at 1.
+  </p>
+  <p style="margin-top: 0;">
+    Action: count from 1 upward until the 2nd missing number.
+  </p>
+  <p style="margin-top: 0;">
+    Result: 1, 2, 3, 4 are all missing before 5, so the answer is 2.
+  </p>
+  <p>
+    Observation: this shows why the beginning of the number line matters. The array does not necessarily start at 1.
+  </p>
+
+  <p>
+    The signal that should immediately trigger this approach is: <b>“sorted array” + “kth missing / kth absent / count of gaps”</b>.
+    That usually means you should build a missing-count function and then search over it.
+  </p>
+
+  <hr />
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 5 — Optimized Solution 1 (Intermediate)</div>
+  <p>
+    The first real optimization is to process the array gap by gap. For each adjacent pair, we compute how many positive integers are missing between them.
+    If the kth missing number lies inside that gap, we can answer immediately. Otherwise, we subtract the whole gap and move on.
+  </p>
+  <p>
+    This eliminates the need to examine every integer one by one. Instead of scanning the number line, we scan only the array.
+  </p>
+
+  <p><b>Pseudocode:</b></p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">prev = 0
+
+for each value x in arr:
+    gap = x - prev - 1
+    if k &gt; gap:
+        k = k - gap
+        prev = x
+    else:
+        return prev + k
+
+return prev + k</pre>
+
+  <p>
+    <b>Time Complexity:</b> O(n). We visit each array element once, and every gap is processed in constant time.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). We only use a few variables.
+  </p>
+  <p>
+    <b>What was eliminated:</b> All repeated checks of individual integers. We now jump directly over entire missing segments.
+  </p>
+
+  <hr />
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Step 5 — Optimized Solution 2 (Best Known / Fully Optimal)</div>
+  <p>
+    The further insight is that the number of missing values before each index is monotonic.
+    Define:
+  </p>
+  <p style="margin-left: 24px;">
+    <b>missing(i) = arr[i] - (i + 1)</b>
+  </p>
+  <p>
+    Why this formula? Up to index <b>i</b>, there are exactly <b>i + 1</b> array elements present.
+    If the largest value is <b>arr[i]</b>, then among the numbers <b>1..arr[i]</b>, the count of missing numbers is
+    <b>arr[i] - (i + 1)</b>.
+  </p>
+  <p>
+    Because the array is strictly increasing, <b>missing(i)</b> never decreases. That means we can binary search for the first index
+    where <b>missing(i) &gt;= k</b>.
+  </p>
+  <p>
+    Why start with <b>l = 0</b> and <b>r = n - 1</b>? Because we are searching among real array indices only.
+    The answer position may end up being <b>n</b>, but that is the insertion point discovered after the loop, not a valid index to inspect.
+  </p>
+  <p>
+    Why not search on <b>n</b> directly as an index? Because <b>arr[n]</b> does not exist. The binary search needs valid positions for the predicate,
+    and the final answer naturally falls out of the insertion point.
+  </p>
+
+  <p><b>Pseudocode:</b></p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">l = 0
+r = n - 1
+
+while l &lt;= r:
+    mid = l + (r - l) / 2
+    missing = arr[mid] - (mid + 1)
+
+    if missing &lt; k:
+        l = mid + 1
+    else:
+        r = mid - 1
+
+return l + k</pre>
+
+  <p><b>C++17 Code:</b></p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">int findKthPositive(vector&lt;int&gt;&amp; arr, int k) {
+    int n = (int)arr.size();
+    int l = 0, r = n - 1;
+
+    while (l &lt;= r) {
+        int mid = l + (r - l) / 2;
+        int missing = arr[mid] - (mid + 1);  // numbers missing before arr[mid]
+
+        if (missing &lt; k) {
+            l = mid + 1;
+        } else {
+            r = mid - 1;
+        }
+    }
+
+    return l + k;  // insertion point + k gives the kth missing positive number
+}</pre>
+
+  <p><b>Dry Run 1:</b></p>
+  <p style="margin-top: 0;">
+    Input: arr = 2 3 4 7 11, k = 5
+  </p>
+  <p style="margin-top: 0;">
+    Pivot idea: find the first index where missing(i) &gt;= 5
+  </p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">l = 0, r = 4
+
+mid = 2
+arr[2] = 4
+missing = 4 - 3 = 1
+1 &lt; 5  → move right
+l = 3
+
+mid = 3
+arr[3] = 7
+missing = 7 - 4 = 3
+3 &lt; 5  → move right
+l = 4
+
+mid = 4
+arr[4] = 11
+missing = 11 - 5 = 6
+6 &gt;= 5 → move left
+r = 3
+
+Stop: l = 4
+Answer = l + k = 4 + 5 = 9</pre>
+
+  <p><b>Dry Run 2 (Edge Case):</b></p>
+  <p style="margin-top: 0;">
+    Input: arr = 1 2 3 4, k = 2
+  </p>
+  <p style="margin-top: 0;">
+    Every missing(i) is 0, so no index satisfies missing(i) &gt;= 2.
+  </p>
+  <pre style="font-family: Consolas, monospace; font-size: 11pt; background: #f5f5f5; border-left: 3px solid #bbb; padding: 10px 14px; white-space: pre;">l = 0, r = 3
+
+mid = 1
+missing = 2 - 2 = 0
+0 &lt; 2 → l = 2
+
+mid = 2
+missing = 3 - 3 = 0
+0 &lt; 2 → l = 3
+
+mid = 3
+missing = 4 - 4 = 0
+0 &lt; 2 → l = 4
+
+Stop: l = 4
+Answer = 4 + 2 = 6</pre>
+
+  <p>
+    This is exactly the case where the kth missing number lies after the last array element. The binary search does not need a special branch;
+    the insertion point <b>l = n</b> automatically handles it.
+  </p>
+
+  <p>
+    <b>Why the formula return l + k is correct:</b> after the search, <b>l</b> is the first index where the count of missing numbers before that index
+    is at least <b>k</b>. That means the answer is located just before <b>arr[l]</b>, and among the numbers from <b>1</b> to the answer,
+    exactly <b>l</b> array values are present. So the number of missing values up to the answer is <b>answer - l</b>, and setting that equal to <b>k</b>
+    gives <b>answer = l + k</b>.
+  </p>
+
+  <p>
+    <b>Time Complexity:</b> O(log n). The missing-count function is monotonic, so binary search cuts the search space in half each step.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(1). Only a constant amount of extra memory is used.
+  </p>
+  <p>
+    <b>Algorithm Name:</b> Binary Search on the Missing Count / Lower Bound on a Monotonic Predicate.
+  </p>
+
+  <hr />
+
+  <div style="font-size: 14pt; font-weight: bold; margin-top: 28px;">Final Takeaway</div>
+  <p>
+    The clean way to think about this problem is:
+    <b>do not search the number line directly; search the array indices using the count of missing numbers as the monotonic signal.</b>
+    That is the real interview insight.
+  </p>
+</body>
+</html>

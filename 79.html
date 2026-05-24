@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 79 — Word Search</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 22px 0;
+    }
+    .smallgap { margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="title">LeetCode 79 — Word Search</div>
+
+<div class="section">Step 1 — Problem Statement</div>
+<p><b>Input:</b> A 2D character grid <i>board</i> and a string <i>word</i>. You may start from any cell and move one step at a time in four directions: up, down, left, right.</p>
+<p><b>Output:</b> Return <i>true</i> if the word can be formed by a path in the grid, where each character of the word matches the current cell, and each cell can be used at most once in that path. Otherwise return <i>false</i>.</p>
+<p><b>Key Constraints:</b> The same cell cannot be reused in a single path. Moves are only 4-directional. The word length can be larger than the number of cells, which immediately makes the answer impossible.</p>
+<p><b>Edge Cases:</b> Empty board, empty word, single-cell board, word longer than total cells, repeated letters in the board, repeated letters in the word, paths that almost work but fail at the last character, and boards where many cells contain the same starting letter.</p>
+
+<hr>
+
+<div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+<p>This is really a path-existence problem on a grid with a strict no-reuse rule. Strip away the story: you are asked whether a string exists as a simple path in a graph formed by the grid cells.</p>
+<p><b>Core challenge:</b> Explore many possible paths without revisiting a cell and without blowing up time unnecessarily.</p>
+<p><b>Category:</b> Backtracking / DFS on grid.</p>
+<p><b>Mental model:</b> Think of each cell as a potential starting point. From there, try to match the word one character at a time while marking cells as temporarily blocked, then undo the mark when you return.</p>
+<p><b>Common trap:</b> Candidates often forget to unmark cells during backtracking, or they mark too late and accidentally allow reuse in the same path. Another subtle mistake is starting DFS from only one occurrence of the first character instead of every possible occurrence.</p>
+
+<hr>
+
+<div class="section">Step 3 — Brute Force Solution</div>
+<p>Naively, from every cell, try every possible path of length <i>word.length()</i> by recursively moving in four directions, while checking that cells are not reused.</p>
+<pre>
+Pseudocode:
+
+for each cell (r, c) in board:
+    if board[r][c] matches word[0]:
+        if DFS(r, c, 0) returns true:
+            return true
+return false
+
+DFS(r, c, index):
+    if index == word.length:
+        return true
+    if out of bounds or board[r][c] != word[index] or already visited:
+        return false
+
+    mark board[r][c] as visited
+    try all 4 directions:
+        if DFS(next_r, next_c, index + 1) returns true:
+            return true
+    unmark board[r][c]
+    return false
+</pre>
+<p><b>Time Complexity:</b> O(m × n × 4<sup>L</sup>) in the worst case, where m × n is the grid size and L is the word length. From each starting cell, each step branches into up to 4 directions.</p>
+<p><b>Space Complexity:</b> O(L) recursion depth in the DFS stack, ignoring the board marking.</p>
+<p><b>Bottleneck:</b> Exponential branching. The search tree explodes when the board has many repeated letters and many paths appear valid for the first few characters.</p>
+
+<hr>
+
+<div class="section">Step 4 — Intuition Building</div>
+
+<p><b>Test Case 1</b></p>
+<pre>
+Input:
+board =
+A B C E
+S F C S
+A D E E
+word = ABCCED
+
+    Start at 'A' in the top-left.
+    The next needed letters are B -> C -> C -> E -> D.
+Action:
+    Move right to B.
+    Move right to C.
+    Move down to C.
+    Move left to E.
+    Move down to D.
+Result:
+    true
+</pre>
+
+<p><b>What this shows:</b> One valid path is enough. The search must be allowed to turn corners; it is not a straight-line match.</p>
+
+<p><b>Test Case 2</b></p>
+<pre>
+Input:
+board =
+A B C E
+S F C S
+A D E E
+word = SEE
+
+    There are multiple 'S' cells.
+    The top-left 'S' does not work for the full word.
+Action:
+    Try the 'S' at row 1, col 3.
+    Match E.
+    Match E again.
+Result:
+    true
+</pre>
+
+<p><b>What this shows:</b> You must try every possible starting position, not just the first matching cell. A later start can succeed even if an earlier one fails.</p>
+
+<p><b>Test Case 3 (Edge Case)</b></p>
+<pre>
+Input:
+board =
+A A
+A A
+word = AAAAA
+
+    Total cells = 4, but word length = 5.
+    It is impossible to use 5 distinct cells.
+Action:
+    No search can succeed, because one cell cannot be reused.
+Result:
+    false
+</pre>
+
+<p><b>What this shows:</b> A quick length check can eliminate impossible cases early. If <i>word.length()</i> &gt; <i>m × n</i>, return false immediately.</p>
+
+<p><b>Key insight:</b> The problem becomes manageable once each recursive path owns its own temporary visited state. That lets us test one path fully, then restore the board and try another path cleanly.</p>
+<p><b>Signal to remember:</b> When you see “use each cell at most once” plus “find a path that spells something,” think DFS + backtracking immediately.</p>
+
+<hr>
+
+<div class="section">Step 5 — Optimized Solution</div>
+
+<p>There is one meaningful optimal solution here: DFS with backtracking and pruning. This is the standard fully optimal approach for interview purposes.</p>
+
+<p><b>C++17 Code</b></p>
+<pre>
+bool exist(vector&lt;vector&lt;char&gt;&gt;&amp; board, string word) {
+    int m = board.size();
+    int n = board[0].size();
+    if (word.size() &gt; m * n) return false;
+
+    function&lt;bool(int,int,int)&gt; dfs = [&](int r, int c, int idx) -&gt; bool {
+        if (idx == (int)word.size()) return true;
+        if (r &lt; 0 || r &gt;= m || c &lt; 0 || c &gt;= n) return false;
+        if (board[r][c] != word[idx]) return false;
+
+        char saved = board[r][c];
+        board[r][c] = '#';  // mark visited
+
+        bool found =
+            dfs(r + 1, c, idx + 1) ||
+            dfs(r - 1, c, idx + 1) ||
+            dfs(r, c + 1, idx + 1) ||
+            dfs(r, c - 1, idx + 1);
+
+        board[r][c] = saved;  // restore
+        return found;
+    };
+
+    for (int i = 0; i &lt; m; ++i) {
+        for (int j = 0; j &lt; n; ++j) {
+            if (board[i][j] == word[0] &amp;&amp; dfs(i, j, 0)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+</pre>
+
+<p><b>Why this works:</b> Each recursive call represents one partial path. Marking the current cell prevents reuse in the same path. Restoring it after exploring all children ensures other paths remain unaffected.</p>
+
+<p><b>Why the length check matters:</b> If the word is longer than all cells combined, no path can exist. This is a simple but effective pruning rule.</p>
+
+<p><b>Dry Run</b></p>
+<pre>
+Test Case:
+board =
+A B C E
+S F C S
+A D E E
+word = ABCCED
+
+Pivot:
+    Start at (0,0) = A
+
+Step 1:
+    Match A with word[0]
+    Mark (0,0) visited
+
+Step 2:
+    Need B
+    Try neighbors of (0,0)
+    Right (0,1) = B matches
+
+Step 3:
+    Need C
+    From (0,1), try neighbors
+    Right (0,2) = C matches
+
+Step 4:
+    Need C
+    From (0,2), try neighbors
+    Down (1,2) = C matches
+
+Step 5:
+    Need E
+    From (1,2), try neighbors
+    Down (2,2) = E matches
+
+Step 6:
+    Need D
+    From (2,2), try neighbors
+    Left (2,1) = D matches
+
+Final Result:
+    All characters matched in order
+    Return true
+</pre>
+
+<p><b>How the edge case is handled:</b> In the 2x2 board with word length 5, the length check fails before any DFS begins. That avoids wasted search.</p>
+
+<p><b>Time Complexity:</b> O(m × n × 4<sup>L</sup>) in the worst case, where L is the word length. The first character can start from up to m × n cells, and each subsequent step can branch into up to 4 directions. In practice, the visited restriction reduces some branching, but the worst-case upper bound remains exponential.</p>
+<p><b>Space Complexity:</b> O(L) due to recursion depth. The algorithm uses the board itself for marking, so no extra visited matrix is needed.</p>
+<p><b>Algorithm Name:</b> Depth-First Search with Backtracking.</p>
+
+<p><b>Why a beginner often doubts this code:</b> The restore step feels risky at first. The key is that restore happens only after exploring all paths from the current cell. That means the cell is blocked only for the current path, which is exactly what “cannot reuse a cell” means.</p>
+
+<!-- :contentReference[oaicite:0]{index=0} -->
+
+</body>
+</html>
