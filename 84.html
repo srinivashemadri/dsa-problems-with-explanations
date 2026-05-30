@@ -1,0 +1,368 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 24px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #000;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 84 — Largest Rectangle in Histogram</div>
+
+  <p>Following your uploaded template :contentReference[oaicite:0]{index=0}, here is the full breakdown in the format you asked for.</p>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> An array of non-negative integers where each value represents the height of a bar in a histogram, and every bar has width 1.
+    <br>
+    <b>Output:</b> The area of the largest rectangle that can be formed using one or more contiguous bars.
+    <br>
+    <b>Key Constraints:</b> The rectangle must be continuous; you cannot skip bars. The height of the rectangle is limited by the shortest bar inside that span. The width is the number of bars included. Because the answer can come from any span, every bar may act as the limiting height for some rectangle.
+    <br>
+    <b>Edge Cases:</b> Empty array should return 0. A single bar should return its own height. All bars equal should form one wide rectangle. Strictly increasing or strictly decreasing arrays are important because they expose the need to find nearest smaller bars. Repeated equal heights are also tricky because they affect how the stack is maintained. Large widths can make area large enough that using a wider integer type is safer during intermediate multiplication.
+  </p>
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    This is really asking: for every bar, how far can that bar extend to the left and right while still remaining the limiting height of the rectangle?
+    The core challenge is to avoid checking every possible subarray and recomputing its minimum again and again.
+    This is a monotonic stack problem, specifically a nearest-smaller-element pattern.
+    The mental model is simple: keep bars in increasing height order, so when a shorter bar appears, you immediately know which taller bars just lost their chance to extend further.
+    The subtle trap is to think only about where a bar sits, instead of thinking about the span over which it remains the minimum height.
+  </p>
+
+  <hr>
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The most naive approach is to try every possible subarray, compute the minimum height inside it, and use
+    <code>minHeight * width</code> as the rectangle area.
+  </p>
+
+  <pre>for left from 0 to n-1:
+    for right from left to n-1:
+        minHeight = minimum value in heights[left..right]
+        area = minHeight * (right - left + 1)
+        update answer</pre>
+
+  <p>
+    This is expensive because for every pair <code>(left, right)</code>, we may scan the whole range again to find the minimum.
+    <br>
+    <b>Time Complexity:</b> O(n<sup>3</sup>) in the pure naive form, because there are O(n<sup>2</sup>) subarrays and each minimum can cost O(n).
+    <br>
+    <b>Space Complexity:</b> O(1).
+    <br>
+    The bottleneck is repeated minimum-search work across overlapping intervals.
+  </p>
+
+  <hr>
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p><b>Test Case 1</b></p>
+  <p>
+    Input: 2
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Only one bar exists, so the rectangle can only use that bar.
+    <br>
+    Action: Treat the bar as width 1.
+    <br>
+    Result: 2
+  </p>
+
+  <p>
+    This looks trivial, but it confirms an important idea: a bar may become a full rectangle by itself if nothing smaller blocks it.
+    A naive approach would still try many ranges, but the optimal approach should instantly preserve this area when the bar is popped at the end.
+  </p>
+
+  <p><b>Test Case 2</b></p>
+  <p>
+    Input: 3 2 1
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Heights are strictly decreasing.
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Each new bar is smaller, so previous taller bars cannot extend further to the right.
+    <br>
+    Action: The stack keeps getting popped as soon as a shorter bar appears.
+    <br>
+    Result: Areas are checked for 3, then 4 from height 2 over width 2, then 3 from height 1 over width 3.
+  </p>
+
+  <p>
+    This test shows why the stack is powerful. The moment a shorter bar arrives, it finalizes the rectangle for taller bars. You do not need to revisit them later.
+  </p>
+
+  <p><b>Test Case 3</b></p>
+  <p>
+    Input: 2 1 5 6 2 3
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;The key interesting block is 5 6 2.
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;Bars 5 and 6 can stretch until the bar 2 appears, which blocks them on the right.
+    <br>
+    Action: When 2 arrives, pop 6 first, then 5, and compute both rectangles immediately.
+    <br>
+    Result: The best rectangle is 5 x 2 = 10.
+  </p>
+
+  <p>
+    This is the pattern to remember: a bar's best rectangle is determined by the first smaller bar on the left and the first smaller bar on the right.
+    Once you see that, the problem stops feeling like a brute-force interval problem and starts feeling like a boundary-finding problem.
+    A future problem should trigger the same approach whenever you need the widest span around each element under a monotonic condition, especially in histogram, stock-span, and nearest-smaller-element style questions.
+  </p>
+
+  <hr>
+
+  <div class="section">Step 5 — Optimized Solution 1 (Intermediate)</div>
+  <p>
+    The first meaningful optimization is to compute, for every bar, the index of the previous smaller bar and the next smaller bar.
+    Once those two boundaries are known, the largest rectangle using that bar as the limiting height is immediate.
+    This eliminates repeated scanning of subarrays.
+  </p>
+
+  <pre>1. Compute previous smaller element index for every bar using a monotonic increasing stack.
+2. Compute next smaller element index for every bar using another monotonic increasing stack.
+3. For each bar i:
+       width = nextSmaller[i] - previousSmaller[i] - 1
+       area  = heights[i] * width
+       update answer</pre>
+
+  <p>
+    <b>Time Complexity:</b> O(n). Each bar is pushed and popped at most once in each pass.
+    <br>
+    <b>Space Complexity:</b> O(n) for the two boundary arrays and the stack.
+    <br>
+    What was eliminated: the repeated minimum search over every interval.
+  </p>
+
+  <div class="section">Step 5 — Optimized Solution 2 (Best Known / Fully Optimal)</div>
+  <p>
+    The fully optimal version merges boundary discovery and area calculation into one pass.
+    The stack stores indices of bars in increasing height order.
+    When a shorter bar appears, it means every taller bar on the top of the stack has now found its next smaller bar on the right.
+    That is the exact moment to compute its rectangle area.
+    This is the standard monotonic increasing stack solution.
+  </p>
+
+  <p><b>Why the stack stores indices, not heights:</b> because width depends on positions, not just values.</p>
+  <p><b>Why the condition uses <code>&gt;=</code> while popping:</b> equal heights should collapse so that only the most recent index remains. That keeps the stack strictly increasing and prevents duplicate boundaries from being treated as separate blockers.</p>
+  <p><b>Why the width is <code>i - left - 1</code>:</b> after popping, <code>left</code> is the index of the previous smaller bar. The current bar at <code>i</code> is the first smaller bar on the right. So the valid rectangle spans from <code>left + 1</code> to <code>i - 1</code>.</p>
+
+  <pre>int largestRectangleArea(vector&lt;int&gt;&amp; heights) {
+    int n = (int)heights.size();
+    stack&lt;int&gt; st;
+    long long ans = 0;
+
+    for (int i = 0; i &lt;= n; ++i) {
+        int curr = (i == n ? 0 : heights[i]);
+
+        while (!st.empty() &amp;&amp; heights[st.top()] &gt;= curr) {
+            int h = heights[st.top()];
+            st.pop();
+
+            int leftSmaller = st.empty() ? -1 : st.top();
+            long long width = i - leftSmaller - 1;
+            ans = max(ans, 1LL * h * width);
+        }
+
+        if (i &lt; n) {
+            st.push(i);
+        }
+    }
+
+    return (int)ans;
+}</pre>
+
+  <p><b>Dry Run on 2 1 5 6 2 3</b></p>
+  <p>
+    Pivot idea: the stack always keeps an increasing sequence of heights by index.
+    <br>
+    Sentinel idea: the extra virtual bar of height 0 at the end forces all remaining bars to be popped and evaluated.
+  </p>
+
+  <p>
+    <b>Step 0:</b> i = 0, height = 2
+    <br>
+    Stack: empty
+    <br>
+    Action: push 0
+    <br>
+    Stack after action: [0]
+  </p>
+
+  <p>
+    <b>Step 1:</b> i = 1, height = 1
+    <br>
+    Current bar is smaller than 2.
+    <br>
+    Action: pop 0
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;height = 2
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;leftSmaller = -1
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;width = 1 - (-1) - 1 = 1
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;area = 2
+    <br>
+    Result so far: 2
+    <br>
+    Then push 1
+    <br>
+    Stack after action: [1]
+  </p>
+
+  <p>
+    <b>Step 2:</b> i = 2, height = 5
+    <br>
+    5 is greater than 1, so it can extend.
+    <br>
+    Action: push 2
+    <br>
+    Stack after action: [1, 2]
+  </p>
+
+  <p>
+    <b>Step 3:</b> i = 3, height = 6
+    <br>
+    6 is greater than 5, so it can extend.
+    <br>
+    Action: push 3
+    <br>
+    Stack after action: [1, 2, 3]
+  </p>
+
+  <p>
+    <b>Step 4:</b> i = 4, height = 2
+    <br>
+    Current bar blocks taller bars.
+    <br>
+    Action: pop 3
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;height = 6
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;leftSmaller = 2
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;width = 4 - 2 - 1 = 1
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;area = 6
+    <br>
+    Action: pop 2
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;height = 5
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;leftSmaller = 1
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;width = 4 - 1 - 1 = 2
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;area = 10
+    <br>
+    Result so far: 10
+    <br>
+    Then push 4
+    <br>
+    Stack after action: [1, 4]
+  </p>
+
+  <p>
+    <b>Step 5:</b> i = 5, height = 3
+    <br>
+    3 is greater than 2, so it can extend.
+    <br>
+    Action: push 5
+    <br>
+    Stack after action: [1, 4, 5]
+  </p>
+
+  <p>
+    <b>Step 6:</b> i = 6, sentinel height = 0
+    <br>
+    This forces all remaining bars to be finalized.
+    <br>
+    Action: pop 5
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;height = 3
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;leftSmaller = 4
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;width = 6 - 4 - 1 = 1
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;area = 3
+    <br>
+    Action: pop 4
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;height = 2
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;leftSmaller = 1
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;width = 6 - 1 - 1 = 4
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;area = 8
+    <br>
+    Action: pop 1
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;height = 1
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;leftSmaller = -1
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;width = 6 - (-1) - 1 = 6
+    <br>
+    &nbsp;&nbsp;&nbsp;&nbsp;area = 6
+    <br>
+    Final Result: 10
+  </p>
+
+  <p>
+    <b>Why this handles the strict decreasing edge case correctly:</b> each new shorter bar immediately triggers pops, so no bar waits until the end with an incorrect open span.
+    <br>
+    <b>Why this handles equal heights correctly:</b> using <code>&gt;=</code> collapses duplicates. For example, in 3 3 3, the later 3 replaces the earlier 3 in the active stack, and the final width becomes 3, giving area 9.
+    <br>
+    <b>Time Complexity:</b> O(n). Every index is pushed once and popped once.
+    <br>
+    <b>Space Complexity:</b> O(n) for the stack.
+    <br>
+    <b>Algorithm Name:</b> Monotonic Increasing Stack.
+  </p>
+
+  <hr>
+
+  <div class="section">Final Interview Takeaway</div>
+  <p>
+    The key realization is that every bar is waiting for the first smaller bar on each side.
+    Once you see “largest rectangle under a histogram,” think “nearest smaller to left and right,” and then think “monotonic stack.”
+    That is the signal to reach for this same approach in future problems.
+  </p>
+</body>
+</html>

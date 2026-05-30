@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeetCode 787 - Code Explanation</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+      padding: 0 16px;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 26px;
+    }
+    h2 {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    p {
+      margin: 10px 0;
+    }
+    .code {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 22px 0;
+    }
+    .block {
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 787 — Explanation of the Given Code</div>
+
+  <h2>1. What this code is doing</h2>
+  <p>
+    The code tries to find the cheapest price from <span class="label">src</span> to <span class="label">dst</span>
+    with at most <span class="label">k</span> stops. It builds a graph from the flight list, then uses a queue
+    to explore possible routes while keeping track of both the current cost and the number of flights used so far.
+  </p>
+
+  <h2>2. The code</h2>
+  <div class="code">class Solution {
+public:
+    int findCheapestPrice(int n, vector&lt;vector&lt;int&gt;&gt;&amp; flights, int src, int dst, int k) {
+        queue&lt;tuple&lt;int, int, int&gt;&gt; q;
+
+        vector&lt;vector&lt;pair&lt;int, int&gt;&gt;&gt; adj(n);
+
+        for(int i=0;i&lt;flights.size();i++){
+            int from = flights[i][0];
+            int to = flights[i][1];
+            int we = flights[i][2];
+            adj[from].push_back({to, we});
+        }
+
+        vector&lt;int&gt; dist(n, INT_MAX);
+        dist[src] = 0;
+
+        q.push(make_tuple(0, src, 0));
+
+        while(!q.empty()){
+            int stops = get&lt;0&gt;(q.front());
+            int curr = get&lt;1&gt;(q.front());
+            int distance = get&lt;2&gt;(q.front());
+            q.pop();
+
+            if(stops &gt; k ) continue;
+
+            if(curr == dst) continue;
+
+            for(int i=0;i&lt;adj[curr].size();i++){
+                int nxt = adj[curr][i].first;
+                int we = adj[curr][i].second;
+
+                if(dist[nxt] &gt; distance + we){
+                    q.push({stops+1, nxt, distance + we});
+                    dist[nxt] = distance + we;
+                }
+            }
+        }
+
+        return dist[dst] == INT_MAX ? -1: dist[dst];
+
+    }
+};</div>
+
+  <h2>3. Line-by-line explanation</h2>
+
+  <div class="block"><span class="label">queue&lt;tuple&lt;int, int, int&gt;&gt; q;</span><br>
+    This queue stores states of the form <span class="label">(stops, city, cost)</span>. It is the main work queue for exploring paths.
+  </div>
+
+  <div class="block"><span class="label">vector&lt;vector&lt;pair&lt;int, int&gt;&gt;&gt; adj(n);</span><br>
+    This creates an adjacency list. For every city, it stores all outgoing flights as <span class="label">(next_city, price)</span>.
+  </div>
+
+  <div class="block"><span class="label">for(...) ... adj[from].push_back({to, we});</span><br>
+    This converts the given flight list into graph form, so later the code can directly visit all neighbors of a city.
+  </div>
+
+  <div class="block"><span class="label">vector&lt;int&gt; dist(n, INT_MAX);</span><br>
+    <span class="label">dist[i]</span> stores the cheapest cost found so far to reach city <span class="label">i</span>.
+  </div>
+
+  <div class="block"><span class="label">dist[src] = 0;</span><br>
+    The starting city has cost zero.
+  </div>
+
+  <div class="block"><span class="label">q.push(make_tuple(0, src, 0));</span><br>
+    The first state means: 0 stops used, currently at <span class="label">src</span>, total cost 0.
+  </div>
+
+  <div class="block"><span class="label">while(!q.empty())</span><br>
+    Keep processing states until there is nothing left to explore.
+  </div>
+
+  <div class="block"><span class="label">stops = get&lt;0&gt;(...), curr = get&lt;1&gt;(...), distance = get&lt;2&gt;(...)</span><br>
+    Read the current state from the queue.
+  </div>
+
+  <div class="block"><span class="label">if(stops &gt; k) continue;</span><br>
+    If this path already used too many stops, ignore it.
+  </div>
+
+  <div class="block"><span class="label">if(curr == dst) continue;</span><br>
+    If the destination is already reached, the code does not expand this path further.
+  </div>
+
+  <div class="block"><span class="label">for each neighbor of curr</span><br>
+    Try all outgoing flights from the current city.
+  </div>
+
+  <div class="block"><span class="label">if(dist[nxt] &gt; distance + we)</span><br>
+    Only push the next city if the new route is cheaper than the best one recorded so far for that city.
+  </div>
+
+  <div class="block"><span class="label">q.push({stops+1, nxt, distance + we});</span><br>
+    Add the new state to the queue.
+  </div>
+
+  <div class="block"><span class="label">dist[nxt] = distance + we;</span><br>
+    Save the cheaper cost for that city.
+  </div>
+
+  <div class="block"><span class="label">return dist[dst] == INT_MAX ? -1 : dist[dst];</span><br>
+    If the destination was never reached, return <span class="label">-1</span>; otherwise return the cheapest cost found.
+  </div>
+
+  <hr />
+
+  <h2>4. Intuition behind the code</h2>
+  <p>
+    The code is trying to do two things at once:
+  </p>
+  <p>
+    First, it explores routes from the source to all reachable cities. Second, it tries to avoid wasting work by
+    remembering the cheapest cost found so far for each city.
+  </p>
+  <p>
+    The queue stores full path states, because the same city can be reached with different costs and different numbers
+    of stops. The stop limit is important because a route may be cheap but still invalid if it uses too many stops.
+  </p>
+  <p>
+    So the mental model is: <span class="label">"expand only useful routes, and throw away routes that are already too expensive or too long."</span>
+  </p>
+
+  <h2>5. Important subtle point</h2>
+  <p>
+    This implementation uses a single <span class="label">dist[node]</span> array. That is a pruning idea, but for
+    this problem it is not always fully correct in all cases, because the cheapest way to reach a city is not always
+    the best way to reach the destination within the stop limit.
+  </p>
+  <p>
+    Example idea: a path that reaches an intermediate city with a slightly higher cost but fewer stops can still lead
+    to the final answer, while a cheaper path with more stops may block that route if the stop limit is tight.
+  </p>
+  <p>
+    So the core idea is right, but the pruning strategy is the part that can break correctness in edge cases.
+  </p>
+
+  <h2>6. What each variable means</h2>
+  <p><span class="label">adj</span> → graph of flights</p>
+  <p><span class="label">dist</span> → cheapest known cost to each city</p>
+  <p><span class="label">q</span> → states waiting to be processed</p>
+  <p><span class="label">stops</span> → number of flights already taken</p>
+  <p><span class="label">curr</span> → current city</p>
+  <p><span class="label">distance</span> → total cost from source to current city</p>
+
+  <hr />
+
+  <h2>7. Tiny dry run</h2>
+  <p>
+    Suppose the flights are:</p>
+  <div class="code">0 -&gt; 1 cost 100
+1 -&gt; 2 cost 100
+0 -&gt; 2 cost 500</div>
+  <p>
+    Start with <span class="label">(0, 0, 0)</span>.</p>
+  <p>
+    From city 0, the code can go to city 1 with cost 100 and city 2 with cost 500.
+  </p>
+  <p>
+    It stores the cheaper known costs in <span class="label">dist</span>, pushes the new states into the queue, and
+    continues until every useful route is checked.
+  </p>
+  <p>
+    The final answer becomes the cheapest valid route within the stop limit.
+  </p>
+
+  <h2>8. Final takeaway</h2>
+  <p>
+    This code is a graph traversal with state. The extra state is not just the city, but also the number of stops and
+    the total cost. That is the real reason the problem is harder than plain shortest path.
+  </p>
+  <p>
+    The idea is good, but for full correctness the stop dimension usually needs stronger tracking than a single
+    <span class="label">dist[node]</span> array.
+  </p>
+</body>
+</html>

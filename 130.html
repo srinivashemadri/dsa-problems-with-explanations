@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 130 — Surrounded Regions</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      margin-top: 28px;
+      font-size: 14pt;
+      font-weight: bold;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    .mono {
+      font-family: Consolas, monospace;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="title">LeetCode 130 — Surrounded Regions</div>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> An <span class="mono">m x n</span> board containing only <span class="mono">'X'</span> and <span class="mono">'O'</span>.
+    <b>Output:</b> Modify the board in place so that every region of <span class="mono">'O'</span> completely surrounded by <span class="mono">'X'</span> is flipped to <span class="mono">'X'</span>. Any <span class="mono">'O'</span> connected to the border must remain unchanged.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The board is rectangular, the operation must be done in place, and connectivity is 4-directional only. A region is captured only if none of its cells can reach any border cell through adjacent <span class="mono">'O'</span> cells.
+  </p>
+  <p>
+    <b>Edge Cases:</b> empty board, one row, one column, all <span class="mono">'X'</span>, all <span class="mono">'O'</span>, a single isolated interior <span class="mono">'O'</span>, and large border-connected chains that snake through the grid.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    This problem is really asking: <i>which <span class="mono">'O'</span> cells are unsafe because they are trapped away from the border?</i> The core challenge is not to find the captured cells directly, but to identify the safe cells first.
+  </p>
+  <p>
+    This is a <b>graph traversal / flood fill</b> problem on a grid. The instinctive mental model is: every border <span class="mono">'O'</span> acts like an escape point, so any <span class="mono">'O'</span> reachable from the border must survive. The subtle trap is trying to inspect every region independently and repeatedly; that wastes work and often leads to incorrect border handling.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    Naively, for every <span class="mono">'O'</span>, run DFS/BFS to check whether its component touches the border. If it does, leave it. If it does not, flip that whole component to <span class="mono">'X'</span>.
+  </p>
+
+  <pre>
+For each cell (i, j):
+    if board[i][j] == 'O' and not visited:
+        run DFS/BFS from (i, j)
+        collect all cells in this component
+        if any cell in this component touches the border:
+            keep them as 'O'
+        else:
+            flip all collected cells to 'X'</pre>
+
+  <p>
+    <b>Time Complexity:</b> <span class="mono">O((m*n)^2)</span> in the worst case. In a board full of <span class="mono">'O'</span>, each component check may traverse nearly the entire grid, and there can be many starting cells.
+  </p>
+  <p>
+    <b>Space Complexity:</b> <span class="mono">O(m*n)</span> for visited state and traversal stack/queue.
+  </p>
+  <p>
+    The bottleneck is repeated traversal of overlapping regions.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p><b>Test Case 1</b></p>
+  <pre>
+Input: O
+
+    Single cell is also a border cell
+    It cannot be captured
+
+Action: keep it unchanged
+
+Result: O</pre>
+
+  <p><b>Test Case 2</b></p>
+  <pre>
+Input:
+X X X X
+X O O X
+X X O X
+X O X X
+
+    The region at (1,1), (1,2), (2,2) is fully enclosed
+    The O at bottom edge is border-connected and must survive
+
+Action:
+    start from the border O at (3,1)
+    mark all O's reachable from border as safe
+    everything else O is trapped
+
+Result:
+X X X X
+X X X X
+X X X X
+X O X X</pre>
+
+  <p><b>Test Case 3 (Edge Case)</b></p>
+  <pre>
+Input:
+O O O
+O O O
+O O O
+
+    Every O touches or reaches the border
+    There is no enclosed region at all
+
+Action:
+    flood fill from all border O's
+    all cells become marked safe
+    no cell is flipped
+
+Result:
+O O O
+O O O
+O O O</pre>
+
+  <p>
+    The key insight appears here: it is easier to discover the <b>safe</b> region from the border than to prove every interior region is trapped. The signal that should immediately make you think of this approach is: <b>“cells/components connected to the boundary must be preserved.”</b>
+  </p>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution</div>
+
+  <p>
+    There is one fully optimal idea here: perform a multi-source flood fill from every border <span class="mono">'O'</span>. Mark every reachable <span class="mono">'O'</span> as safe. After that, any remaining <span class="mono">'O'</span> is definitely enclosed and can be flipped.
+  </p>
+
+  <p>
+    This is often called <b>multi-source BFS flood fill</b>.
+  </p>
+
+  <p><b>Why this works:</b> If an <span class="mono">'O'</span> can be reached from the border through other <span class="mono">'O'</span> cells, then it is not surrounded. So border reachability is exactly the safety criterion.
+  </p>
+
+  <p><b>Why start from the border and not from every interior cell?</b> Because the border gives you the only cells that are guaranteed to survive. From there, you expand only once into the safe area. This removes repeated region checks.</p>
+
+  <p><b>Pseudocode:</b></p>
+
+  <pre>
+1. Push every border 'O' into a queue and mark it as safe, for example with '#'.
+2. While the queue is not empty:
+       pop one cell
+       for each of 4 directions:
+           if neighbor is inside the board and is 'O':
+               mark it '#'
+               push it into the queue
+3. After BFS ends:
+       flip every remaining 'O' to 'X'
+       convert every '#' back to 'O'</pre>
+
+  <p><b>Full Working C++17 Code:</b></p>
+
+  <pre>
+void solve(vector&lt;vector&lt;char&gt;&gt;&amp; board) {
+    int m = board.size();
+    if (m == 0) return;
+    int n = board[0].size();
+    if (n == 0) return;
+
+    queue&lt;pair&lt;int, int&gt;&gt; q;
+
+    auto pushIfO = [&](int r, int c) {
+        if (board[r][c] == 'O') {
+            board[r][c] = '#';
+            q.push({r, c});
+        }
+    };
+
+    for (int i = 0; i &lt; m; ++i) {
+        pushIfO(i, 0);
+        if (n &gt; 1) pushIfO(i, n - 1);
+    }
+
+    for (int j = 0; j &lt; n; ++j) {
+        pushIfO(0, j);
+        if (m &gt; 1) pushIfO(m - 1, j);
+    }
+
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+
+    while (!q.empty()) {
+        auto [r, c] = q.front();
+        q.pop();
+
+        for (int k = 0; k &lt; 4; ++k) {
+            int nr = r + dr[k];
+            int nc = c + dc[k];
+
+            if (nr &gt;= 0 &amp;&amp; nr &lt; m &amp;&amp; nc &gt;= 0 &amp;&amp; nc &lt; n &amp;&amp; board[nr][nc] == 'O') {
+                board[nr][nc] = '#';
+                q.push({nr, nc});
+            }
+        }
+    }
+
+    for (int i = 0; i &lt; m; ++i) {
+        for (int j = 0; j &lt; n; ++j) {
+            if (board[i][j] == 'O') board[i][j] = 'X';
+            else if (board[i][j] == '#') board[i][j] = 'O';
+        }
+    }
+}</pre>
+
+  <p><b>Dry Run on a Meaningful Case:</b></p>
+  <pre>
+Input:
+X X X X
+X O O X
+X X O X
+X O X X
+
+Pivot idea:
+    border O's are the only safe seeds
+
+Step 1: Queue initialization
+    Border cells scanned
+    Only (3,1) is 'O'
+    Mark (3,1) as '#'
+
+Queue: (3,1)
+
+Step 2: BFS expansion
+    Pop (3,1)
+    Neighbors:
+        (2,1) = X
+        (3,0) = X
+        (3,2) = X
+        (4,1) out of bounds
+    No new cells added
+
+Safe marks:
+X X X X
+X O O X
+X X O X
+X # X X
+
+Step 3: Final pass
+    Remaining 'O' cells are enclosed
+    Flip them to 'X'
+    Convert '#' back to 'O'
+
+Result:
+X X X X
+X X X X
+X X X X
+X O X X</pre>
+
+  <p><b>Extreme Edge Case Handling:</b></p>
+  <pre>
+Case: 1 x N or M x 1 board
+
+Example:
+O X O O X
+
+    Every cell lies on the border
+    All O's are automatically safe
+    BFS marks them, final flip step changes nothing
+
+This is exactly where a naive “interior region” mindset can fail,
+but border flood fill handles it naturally without special-case logic.</pre>
+
+  <p><b>Time Complexity:</b> <span class="mono">O(m*n)</span>. Each cell is visited at most once during BFS, and each cell is processed a constant number of times in the final pass.</p>
+  <p><b>Space Complexity:</b> <span class="mono">O(m*n)</span> in the worst case for the queue. The board itself is modified in place, so no extra visited matrix is needed.</p>
+
+  <hr />
+
+  <div class="section">Final Interview Intuition</div>
+  <p>
+    The pattern to remember is: when a grid problem asks you to preserve cells connected to the edge, do not search from the middle. Start from the border, mark all reachable “safe” cells, then flip the rest. That single shift in perspective turns a repetitive region-checking problem into a clean linear-time flood fill.
+  </p>
+
+</body>
+</html>

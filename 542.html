@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 542 - 01 Matrix</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    h1 {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin: 0 0 22px 0;
+    }
+    h2 {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    h3 {
+      font-size: 12.5pt;
+      font-weight: bold;
+      margin: 18px 0 8px 0;
+    }
+    p {
+      margin: 0 0 12px 0;
+    }
+    .indent {
+      margin-left: 18px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 14px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #000;
+      margin: 22px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>LeetCode 542 — 01 Matrix</h1>
+
+  <h2>Step 1 — Problem Statement</h2>
+  <p>
+    <b>Input:</b> A rectangular binary matrix <i>mat</i> containing only 0s and 1s.
+    For every cell, we need the distance to the nearest 0, where distance is measured by the
+    number of moves in the four cardinal directions: up, down, left, and right.
+  </p>
+  <p>
+    <b>Output:</b> A matrix of the same size where each cell contains the minimum number of steps
+    required to reach any 0.
+  </p>
+  <p>
+    <b>Key Constraints:</b> The matrix can be large enough that any solution that re-scans the whole grid
+    for every cell will be too slow. The values are only 0 or 1, which is a strong hint that we are dealing
+    with shortest distance to a set of sources.
+  </p>
+  <p>
+    <b>Edge Cases:</b> a single cell matrix, an all-zero matrix, zeros appearing only on the border,
+    zeros appearing in multiple places, and the standard LeetCode guarantee that there is at least one 0.
+    If the matrix is already all zeros, the answer should be identical to the input. If there were no zero
+    at all, the distance would be undefined, but that situation does not occur in the official problem.
+  </p>
+
+  <h2>Step 2 — Problem Understanding &amp; Approach Overview</h2>
+  <p>
+    Strip away the story: this is really asking for the shortest distance from every grid cell to the nearest
+    source node, where every 0-cell is a source and every move has equal cost 1.
+  </p>
+  <p>
+    The core challenge is to compute all these shortest paths efficiently without restarting the search from
+    scratch for every single cell.
+  </p>
+  <p>
+    <b>Category:</b> graph shortest path on an unweighted grid, solved with multi-source BFS.
+  </p>
+  <p>
+    <b>Mental model:</b> do not think “for each 1, find the closest 0.” Think instead “all zeros expand outward
+    at the same time, layer by layer, and the first time a cell is reached is its answer.”
+  </p>
+  <p>
+    <b>Common trap:</b> doing BFS or DFS separately from every 1-cell. That repeats the same work many times and
+    turns a linear grid problem into a quadratic one. Another trap is trying to make a greedy local choice from
+    neighbors in one pass, which misses the fact that the nearest zero may be far away.
+  </p>
+
+  <h2>Step 3 — Brute Force Solution</h2>
+  <p>
+    The naive idea is simple: for every cell, scan the entire matrix and compute its distance to each zero,
+    then keep the minimum.
+  </p>
+
+  <pre>
+for each cell (r, c):
+    if mat[r][c] == 0:
+        ans[r][c] = 0
+    else:
+        best = infinity
+        for each cell (i, j) in the matrix:
+            if mat[i][j] == 0:
+                best = min(best, abs(r - i) + abs(c - j))
+        ans[r][c] = best
+  </pre>
+
+  <p>
+    <b>Time Complexity:</b> O((m × n)²). There are m × n cells, and for each cell we may scan all m × n cells again.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(m × n) for the answer matrix.
+  </p>
+  <p>
+    <b>Performance bottleneck:</b> every cell repeats a full-grid search. The same zero positions are re-evaluated again and again.
+  </p>
+
+  <h2>Step 4 — Intuition Building</h2>
+
+  <h3>Test Case 1</h3>
+  <div class="indent">
+    <p><b>Input:</b> 0</p>
+    <p>
+      <b>Observation:</b> The cell is already a zero, so its nearest zero is itself.
+    </p>
+    <p><b>Action:</b> Assign distance 0 immediately.</p>
+    <p><b>Result:</b> 0</p>
+  </div>
+
+  <h3>Test Case 2</h3>
+  <div class="indent">
+    <p><b>Input:</b> 1 0 1</p>
+    <p>
+      <b>Observation:</b> The middle cell is a source. The left and right cells are one step away from it.
+      If you tried to solve each cell independently, you would redo the same work twice.
+    </p>
+    <p><b>Action:</b> Start from the zero and expand outward one layer at a time.</p>
+    <p><b>Result:</b> 1 0 1</p>
+  </div>
+
+  <h3>Test Case 3</h3>
+  <div class="indent">
+    <p><b>Input:</b></p>
+    <p>0 0 0</p>
+    <p>0 1 0</p>
+    <p>1 1 1</p>
+    <p>
+      <b>Observation:</b> There are multiple sources. The center 1 is surrounded by zeros, so its answer is 1.
+      The bottom row cells are best reached from the closest zero above them, not from a single arbitrarily chosen zero.
+    </p>
+    <p><b>Action:</b> Let all zero cells enter the queue first, then process them in layers.</p>
+    <p><b>Result:</b></p>
+    <p>0 0 0</p>
+    <p>0 1 0</p>
+    <p>1 1 1</p>
+  </div>
+
+  <p>
+    The key pattern is now visible: we are not searching from every cell outward. We are flooding the grid
+    outward from all zeros simultaneously. Because each move costs the same, the first time a cell is reached
+    is guaranteed to be the shortest distance.
+  </p>
+  <p>
+    A rare but important edge case is an all-zero matrix. In that case, the queue is initially full of every
+    cell, but no updates are needed. The optimal method handles it naturally without special logic.
+  </p>
+  <p>
+    <b>Signal to remember for future problems:</b> when you see “distance to nearest source” on an unweighted grid,
+    think multi-source BFS immediately.
+  </p>
+
+  <hr />
+
+  <h2>Step 5 — Optimized Solution</h2>
+  <p>
+    The best-known practical solution here is <b>multi-source BFS</b>. Put every 0-cell into the queue first
+    with distance 0. Then expand level by level into neighboring 1-cells. The first time a cell is assigned a
+    distance, that distance is minimal because BFS explores in increasing number of moves.
+  </p>
+
+  <p><b>C++17 Code:</b></p>
+  <pre>
+vector&lt;vector&lt;int&gt;&gt; updateMatrix(vector&lt;vector&lt;int&gt;&gt;&amp; mat) {
+    int m = mat.size();
+    if (m == 0) return {};
+    int n = mat[0].size();
+
+    vector&lt;vector&lt;int&gt;&gt; dist(m, vector&lt;int&gt;(n, -1));
+    queue&lt;pair&lt;int, int&gt;&gt; q;
+
+    for (int i = 0; i &lt; m; ++i) {
+        for (int j = 0; j &lt; n; ++j) {
+            if (mat[i][j] == 0) {
+                dist[i][j] = 0;
+                q.push({i, j});
+            }
+        }
+    }
+
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+
+    while (!q.empty()) {
+        auto [r, c] = q.front();
+        q.pop();
+
+        for (int k = 0; k &lt; 4; ++k) {
+            int nr = r + dr[k];
+            int nc = c + dc[k];
+
+            if (nr &lt; 0 || nr &gt;= m || nc &lt; 0 || nc &gt;= n) continue;
+            if (dist[nr][nc] != -1) continue;
+
+            dist[nr][nc] = dist[r][c] + 1;
+            q.push({nr, nc});
+        }
+    }
+
+    return dist;
+}
+  </pre>
+
+  <p>
+    <b>Why this works:</b> all zeros are treated as starting points at distance 0. BFS guarantees that when a
+    cell is first reached, no shorter path can exist, because any shorter path would have had to be processed in
+    an earlier BFS layer.
+  </p>
+  <p>
+    <b>Why mark visited on enqueue, not on dequeue:</b> the moment a cell gets its distance and enters the queue,
+    its shortest distance is already fixed. If you wait until dequeue time, the same cell can be inserted multiple
+    times from different neighbors.
+  </p>
+  <p>
+    <b>Why a single BFS is enough:</b> the queue starts with all zero cells, so the wavefronts from every source
+    compete at the same time. That automatically chooses the nearest zero for each cell.
+  </p>
+
+  <h3>Dry Run</h3>
+  <div class="indent">
+    <p><b>Input:</b></p>
+    <p>0 0 0</p>
+    <p>0 1 0</p>
+    <p>1 1 1</p>
+
+    <p><b>Initialization:</b> all zero cells go into the queue with distance 0.</p>
+    <p>Queue contains the six 0-cells.</p>
+
+    <p><b>Pivot / Expansion Layer 0:</b> pop each zero cell and try to update its neighbors.</p>
+    <p>
+      The center cell (1,1) is first reached from a neighboring zero, so dist[1][1] = 1.
+      The bottom-left cell (2,0) is first reached from (1,0), so dist[2][0] = 1.
+      The bottom-middle cell (2,1) is first reached from (1,1) after it becomes 1, or from adjacent zeros through
+      a shorter layer, giving the minimum possible value 1.
+      The bottom-right cell (2,2) is similarly assigned 1.
+    </p>
+
+    <p><b>Reverse check:</b> none of these cells need to be revisited, because the first assignment already came
+    from the nearest layer.</p>
+
+    <p><b>Final Result:</b></p>
+    <p>0 0 0</p>
+    <p>0 1 0</p>
+    <p>1 1 1</p>
+  </div>
+
+  <p>
+    <b>Extreme edge case handling:</b> if the matrix is all zeros, every cell is inserted initially with distance 0,
+    and the BFS loop performs no useful updates. That is exactly the correct answer and costs only linear time.
+  </p>
+
+  <p>
+    <b>Time Complexity:</b> O(m × n). Every cell is enqueued at most once, and each cell checks at most 4 neighbors.
+    The total work is therefore linear in the number of cells.
+  </p>
+  <p>
+    <b>Space Complexity:</b> O(m × n). The distance matrix and queue can both grow to hold a constant fraction of
+    the grid in the worst case.
+  </p>
+  <p>
+    <b>Algorithm name:</b> Multi-source BFS.
+  </p>
+</body>
+</html>

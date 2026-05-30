@@ -1,0 +1,334 @@
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 1020 - Number of Enclaves</title>
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      margin-top: 28px;
+      font-size: 14pt;
+      font-weight: bold;
+    }
+    p {
+      margin: 10px 0;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 10px 0 18px 0;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #000;
+      margin: 24px 0;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="title">LeetCode 1020 — Number of Enclaves</div>
+
+  <p style="font-size:11pt;">
+    Prepared in the exact walkthrough format you asked for. :contentReference[oaicite:0]{index=0}
+  </p>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <span class="label">Input:</span> You are given a binary grid where 1 represents land and 0 represents water.
+    A land cell is considered reachable if you can move from it to another land cell using only up, down, left, or right moves.
+  </p>
+  <p>
+    <span class="label">Output:</span> Return the number of land cells that cannot reach the boundary of the grid by any such path.
+    These are the enclaves.
+  </p>
+  <p>
+    <span class="label">Key Constraints:</span> The grid can be large enough that a solution which repeatedly explores the same region from many cells will be too slow.
+    Connectivity is 4-directional only, not diagonal.
+    A cell on the border is never an enclave if it is land, because it already touches the boundary.
+  </p>
+  <p>
+    <span class="label">Edge Cases:</span> an empty-looking land region, a single cell grid, all zeros, all ones, all land cells on the boundary, and land regions connected to the boundary through a long chain.
+    A subtle case is when an interior land cell is not directly on the border but is connected to one through other land cells; that whole component must be removed.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    This problem is really asking: <strong>how many land cells belong to components that are completely sealed off from the grid boundary?</strong>
+    The story is just camouflage; the real task is graph reachability on a grid.
+  </p>
+  <p>
+    The core challenge is not counting land, but identifying which land is <em>connected to the boundary</em>.
+    Once boundary-connected land is removed, whatever remains is exactly the answer.
+  </p>
+  <p>
+    <span class="label">Category:</span> graph traversal / flood fill / boundary BFS-DFS.
+  </p>
+  <p>
+    <span class="label">Mental model:</span> do not ask, “Can each cell escape?” Instead ask, “What can I flood from the outside in?”
+    Start from every boundary land cell, mark everything reachable, and then count the land that survived.
+  </p>
+  <p>
+    <span class="label">Common trap:</span> many candidates try to run DFS from every land cell and check whether it reaches the boundary.
+    That repeats the same work many times and becomes far too slow.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    For every land cell, run a DFS or BFS to see whether that cell can reach the boundary.
+    If a search reaches the boundary, the cell is not an enclave; otherwise, it is.
+  </p>
+
+  <pre>
+For each cell (r, c):
+    if grid[r][c] == 1:
+        clear a visited set
+        run DFS/BFS from (r, c)
+        if any cell in this component touches boundary:
+            this cell is not an enclave
+        else:
+            count it as enclave
+  </pre>
+
+  <p>
+    <span class="label">Time Complexity:</span> O((m × n) × (m × n)) in the worst case.
+    In the worst case, every land cell may start a traversal that explores almost the entire grid.
+  </p>
+  <p>
+    <span class="label">Space Complexity:</span> O(m × n) for visited / recursion / queue in the worst case.
+  </p>
+  <p>
+    <span class="label">Bottleneck:</span> the same connected land region gets explored again and again from multiple starting cells.
+  </p>
+
+  <hr />
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p><strong>Test Case 1</strong></p>
+  <pre>
+Input: 0
+
+Observation:
+    Single water cell.
+    There is no land at all.
+
+Action:
+    Nothing to flood, nothing to count.
+
+Result:
+    0 enclaves
+  </pre>
+
+  <p><strong>Test Case 2</strong></p>
+  <pre>
+Input: 1
+
+Observation:
+    The only land cell is on the boundary by definition.
+    Boundary land can never be an enclave.
+
+Action:
+    Mark it as reachable from the outside.
+
+Result:
+    0 enclaves
+  </pre>
+
+  <p><strong>Test Case 3</strong></p>
+  <pre>
+Input:
+0 0 0 0
+1 0 1 0
+0 1 1 0
+0 0 0 0
+
+Observation:
+    The land at (1,0) touches the boundary.
+    That boundary land can reach the land at (2,1) and (2,2) through 4-directional paths.
+    So the whole connected land region is not enclosed.
+
+Action:
+    Start flooding from boundary land cells.
+    Remove every land cell reachable from the boundary.
+
+Result:
+    Remaining land cells = 0
+  </pre>
+
+  <p>
+    This is the key discovery: the answer is not “land that looks internal”; the answer is “land that survives after boundary flood fill.”
+    That reverse perspective eliminates repeated searches and directly targets the only cells that matter.
+  </p>
+  <p>
+    An extreme edge case is a huge grid filled with 1s. A naive per-cell search would repeatedly traverse nearly the whole grid.
+    Boundary flood fill handles it cleanly: every land cell is reached from the boundary, so the final answer is 0.
+  </p>
+  <p>
+    <strong>Signal to recognize this approach in future problems:</strong> whenever a grid question asks whether cells are connected to an outer edge, think “start from the border and delete reachable cells.”
+  </p>
+
+  <hr />
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    There is one best practical solution here: flood fill from all boundary land cells, turn every reachable land cell into water, and then count the land that remains.
+    I will use iterative DFS to avoid recursion-depth risk on large grids.
+  </p>
+
+  <p><strong>Optimized Idea:</strong> boundary-connected land is the only land that is definitely not an enclave. So we remove all such land first.</p>
+
+  <pre>
+1. Push every boundary land cell into a stack.
+2. While the stack is not empty:
+       pop one cell
+       if it is land:
+           convert it to water
+           push all 4-directional neighbors
+3. After the flood fill ends, count all remaining land cells.
+4. That count is the answer.
+  </pre>
+
+  <p><strong>Why this works:</strong> any enclave cannot be reached from the boundary, so it will never be flooded.
+    Any land that can reach the boundary must belong to a component touched by the flood, so it gets erased.
+    Therefore, the land left over is exactly the enclave land.
+  </p>
+
+  <p><strong>Method (C++17):</strong></p>
+
+  <pre>
+int numEnclaves(vector&lt;vector&lt;int&gt;&gt;&amp; grid) {
+    int m = grid.size();
+    int n = grid[0].size();
+
+    stack&lt;pair&lt;int, int&gt;&gt; st;
+
+    auto push_if_land = [&](int r, int c) {
+        if (r &gt;= 0 &amp;&amp; r &lt; m &amp;&amp; c &gt;= 0 &amp;&amp; c &lt; n &amp;&amp; grid[r][c] == 1) {
+            st.push({r, c});
+            grid[r][c] = 0;
+        }
+    };
+
+    for (int i = 0; i &lt; m; ++i) {
+        push_if_land(i, 0);
+        push_if_land(i, n - 1);
+    }
+
+    for (int j = 0; j &lt; n; ++j) {
+        push_if_land(0, j);
+        push_if_land(m - 1, j);
+    }
+
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+
+    while (!st.empty()) {
+        auto [r, c] = st.top();
+        st.pop();
+
+        for (int k = 0; k &lt; 4; ++k) {
+            int nr = r + dr[k];
+            int nc = c + dc[k];
+
+            if (nr &gt;= 0 &amp;&amp; nr &lt; m &amp;&amp; nc &gt;= 0 &amp;&amp; nc &lt; n &amp;&amp; grid[nr][nc] == 1) {
+                grid[nr][nc] = 0;
+                st.push({nr, nc});
+            }
+        }
+    }
+
+    int ans = 0;
+    for (int i = 0; i &lt; m; ++i) {
+        for (int j = 0; j &lt; n; ++j) {
+            if (grid[i][j] == 1) ++ans;
+        }
+    }
+
+    return ans;
+}
+  </pre>
+
+  <p><strong>Dry Run:</strong></p>
+  <pre>
+Input:
+0 0 0 0
+1 0 1 0
+0 1 1 0
+0 0 0 0
+
+Pivot:
+    Boundary cells are scanned first.
+    Only (1,0) is land on the boundary.
+
+Flood Fill:
+    Start from (1,0)
+    Mark (1,0) as water
+    Its reachable land neighbors are checked
+    No other boundary-reachable land exists
+
+After Flood:
+    All boundary-connected land is removed
+    The interior land connected to (1,0) is also removed
+
+Count Remaining Land:
+    0
+
+Final Result:
+    0 enclaves
+  </pre>
+
+  <p><strong>Edge Case Handling:</strong></p>
+  <pre>
+Case: all land cells are boundary cells
+    Flood fill deletes everything
+    Answer = 0
+
+Case: single interior island completely surrounded by water
+    It is never reached by boundary flood fill
+    It remains as enclave land
+    Answer &gt; 0
+
+Case: a long chain from interior to boundary
+    The whole chain is removed
+    Even the deep interior cells are not enclaves anymore
+  </pre>
+
+  <p>
+    <strong>Time Complexity:</strong> O(m × n).
+    Every cell is pushed and popped at most once, and each neighbor is checked a constant number of times.
+  </p>
+  <p>
+    <strong>Space Complexity:</strong> O(m × n) in the worst case for the stack.
+    No extra visited matrix is needed because the grid itself stores the marking.
+  </p>
+  <p>
+    <strong>Algorithm Name:</strong> boundary flood fill / multi-source DFS.
+  </p>
+
+</body>
+</html>

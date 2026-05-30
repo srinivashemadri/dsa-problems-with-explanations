@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LeetCode 402 — Remove K Digits</title>
+  <style>
+    body {
+      font-family: "Times New Roman", serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 8px;
+    }
+    pre.code {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .smallgap { margin-top: 8px; }
+    hr { border: none; border-top: 1px solid #000; margin: 22px 0; }
+  </style>
+</head>
+<body>
+  <div class="title">LeetCode 402 — Remove K Digits</div>
+
+  <p>
+    I am following the workflow you attached for LeetCode IDs. :contentReference[oaicite:0]{index=0}
+  </p>
+
+  <div class="section">Step 1 — Problem Statement</div>
+  <p>
+    <b>Input:</b> A non-negative integer given as a string <code>num</code>, and an integer <code>k</code> telling how many digits must be removed.
+    <br/>
+    <b>Output:</b> The smallest possible number, still represented as a string, after removing exactly <code>k</code> digits while keeping the remaining digits in the same relative order.
+    <br/>
+    <b>Key Constraints:</b> The order of the remaining digits cannot change, leading zeros in the result must be removed, and if every digit is removed the answer must be <code>"0"</code>.
+    <br/>
+    <b>Edge Cases:</b> <code>k = 0</code>, <code>k = n</code>, numbers already in increasing order, numbers in decreasing order, repeated digits, and results that become empty or start with zeros after removals.
+  </p>
+
+  <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+  <p>
+    Strip away the story: this is really about deleting exactly <code>k</code> characters from a string so that the remaining string is lexicographically and numerically smallest.
+    The core challenge is deciding <i>which</i> digits should be removed so that the most significant positions become as small as possible.
+    This is a classic <b>monotonic stack</b> problem.
+    The mental model is simple: whenever a digit is larger than the digit after it, that larger digit is a bad choice for the final number because deleting it improves a more significant position.
+    The most common mistake is trying to remove the globally largest digit instead of the first harmful “peak”; that greedy choice fails because position matters more than raw value.
+  </p>
+
+  <hr/>
+
+  <div class="section">Step 3 — Brute Force Solution</div>
+  <p>
+    The naive idea is: repeat the following <code>k</code> times — scan from left to right, find the first index where <code>num[i] &gt; num[i + 1]</code>, remove <code>num[i]</code>, and if no such index exists, remove the last digit. After all removals, strip leading zeros.
+  </p>
+
+  <pre class="code">Pseudocode
+
+repeat k times:
+    find first i such that num[i] > num[i + 1]
+    if such i exists:
+        delete num[i]
+    else:
+        delete last character
+
+remove leading zeros
+if string becomes empty:
+    return "0"
+else:
+    return string</pre>
+
+  <p>
+    <b>Time Complexity:</b> <code>O(k · n)</code> in the usual analysis, and in practice often worse if each erase shifts characters inside a string. You scan many times and keep modifying the middle of the string.
+    <br/>
+    <b>Space Complexity:</b> <code>O(n)</code> if you count the mutable string storage; otherwise <code>O(1)</code> auxiliary beyond the input representation.
+    <br/>
+    <b>Bottleneck:</b> Repeated rescanning and repeated deletions from the middle.
+  </p>
+
+  <div class="section">Step 4 — Intuition Building</div>
+
+  <p><b>Test Case 1</b></p>
+  <pre class="code">Input: num = 1432219, k = 3
+    The first harmful peak is 4 > 3
+Action:
+    Remove 4 first, because it affects a more significant position than removing 3 later
+Result after one removal: 132219
+    Repeating this idea locally keeps improving the left side of the number</pre>
+
+  <p><b>Test Case 2</b></p>
+  <pre class="code">Input: num = 10200, k = 1
+    The first harmful peak is 1 > 0
+Action:
+    Remove 1, not 0
+Result before trimming zeros: 0200
+    After removing leading zeros, the answer becomes 200</pre>
+
+  <p><b>Test Case 3 (Edge Case)</b></p>
+  <pre class="code">Input: num = 10, k = 2
+    Every digit must disappear
+Action:
+    Remove both digits
+Result: 0
+
+Why this matters:
+    A naive implementation might return an empty string
+    The correct output must normalize that case to "0"</pre>
+
+  <p>
+    The pattern becomes clear: the best digit to remove is usually the first digit that violates increasing order. That is exactly what a monotonic increasing stack detects in one pass.  
+    The signal that should immediately trigger this approach is: <b>“delete k characters/digits to make the result smallest/largest while preserving order.”</b>
+  </p>
+
+  <hr/>
+
+  <div class="section">Step 5 — Optimized Solution</div>
+  <p>
+    This problem has one fully optimal solution: a monotonic increasing stack. We scan once, and while the current digit is smaller than the stack top and we still have deletions left, we pop from the stack. That removes a larger digit from a more significant position, which is always better than keeping it.
+  </p>
+
+  <p><b>Why this works:</b> If the current digit <code>c</code> is smaller than the previous digit <code>top</code>, then keeping <code>top</code> before <code>c</code> makes the number larger at an earlier position. Removing <code>top</code> improves the number more than removing some later digit. Because each digit is pushed once and popped once, the total work stays linear.</p>
+
+  <pre class="code">Pseudocode
+
+use an empty stack of characters
+
+for each digit c in num:
+    while k > 0 and stack not empty and stack.top() > c:
+        pop stack
+        k--
+    push c into stack
+
+while k > 0:
+    pop stack
+    k--
+
+remove leading zeros from stack
+if nothing remains:
+    return "0"
+else:
+    return the remaining digits as a string</pre>
+
+  <pre class="code">string removeKdigits(string num, int k) {
+    vector<char> st;
+
+    for (char c : num) {
+        while (k > 0 && !st.empty() && st.back() > c) {
+            st.pop_back();
+            k--;
+        }
+        st.push_back(c);
+    }
+
+    while (k > 0 && !st.empty()) {
+        st.pop_back();
+        k--;
+    }
+
+    int i = 0;
+    while (i < (int)st.size() && st[i] == '0') {
+        i++;
+    }
+
+    if (i == (int)st.size()) return "0";
+    return string(st.begin() + i, st.end());
+}</pre>
+
+  <p><b>Dry Run — 1432219, k = 3</b></p>
+  <pre class="code">Start
+    Stack: empty
+    k = 3
+
+Read 1
+    Stack empty, push
+    Stack: 1
+
+Read 4
+    1 <= 4, push
+    Stack: 1 4
+
+Read 3
+    4 > 3 and k > 0, pop 4
+    k = 2
+    Push 3
+    Stack: 1 3
+
+Read 2
+    3 > 2 and k > 0, pop 3
+    k = 1
+    Push 2
+    Stack: 1 2
+
+Read 2
+    2 <= 2, push
+    Stack: 1 2 2
+
+Read 1
+    2 > 1 and k > 0, pop 2
+    k = 0
+    Push 1
+    Stack: 1 2 1  (remaining digits are fixed now)
+
+Read 9
+    k = 0, so no more removals
+    Stack: 1 2 1 9
+
+Final
+    No leading zeros to remove
+    Result: 1219</pre>
+
+  <p><b>Dry Run — 10200, k = 1</b></p>
+  <pre class="code">Start
+    Stack: empty
+    k = 1
+
+Read 1
+    Stack: 1
+
+Read 0
+    1 > 0 and k > 0, pop 1
+    k = 0
+    Push 0
+    Stack: 0
+
+Read 2
+    k = 0, push directly
+    Stack: 0 2
+
+Read 0
+    Stack: 0 2 0
+
+Read 0
+    Stack: 0 2 0 0
+
+Final
+    Remove leading zero
+    Result: 200</pre>
+
+  <p><b>Complexity</b></p>
+  <p>
+    <b>Time Complexity:</b> <code>O(n)</code>. Every digit is pushed once, and each digit can be popped at most once.
+    <br/>
+    <b>Space Complexity:</b> <code>O(n)</code> for the stack that stores the digits of the candidate answer.
+  </p>
+
+  <p>
+    The subtle beginner trap here is to think “remove the largest digit” globally. That is wrong because the number’s value is dominated by the earliest positions. The correct greedy choice is local but position-aware: remove the first digit that makes the prefix worse.
+  </p>
+</body>
+</html>

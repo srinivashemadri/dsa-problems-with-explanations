@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>LeetCode 802 — Find Eventual Safe States</title>
+  <title>LeetCode 802 - Find Eventual Safe States</title>
   <style>
     body {
       font-family: 'Times New Roman', serif;
@@ -16,7 +16,7 @@
       text-align: center;
       font-size: 14pt;
       font-weight: bold;
-      margin-bottom: 18px;
+      margin-bottom: 24px;
     }
     .section {
       font-size: 14pt;
@@ -24,7 +24,7 @@
       margin-top: 28px;
       margin-bottom: 10px;
     }
-    pre {
+    pre.code {
       font-family: Consolas, monospace;
       font-size: 11pt;
       background: #f5f5f5;
@@ -32,236 +32,227 @@
       padding: 10px 14px;
       white-space: pre;
       overflow-x: auto;
+      line-height: 1.55;
     }
     hr {
       border: none;
-      border-top: 1px solid #999;
-      margin: 24px 0;
+      border-top: 1px solid #bbb;
+      margin: 18px 0;
+    }
+    .label {
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
+
   <div class="title">LeetCode 802 — Find Eventual Safe States</div>
 
   <div class="section">Step 1 — Problem Statement</div>
   <p>
-    <b>Input:</b> You are given a directed graph with <code>n</code> nodes labeled from <code>0</code> to <code>n - 1</code>, represented as an adjacency list where <code>graph[i]</code> contains all nodes reachable directly from node <code>i</code>.
+    <span class="label">Input:</span> You are given a directed graph with <code>n</code> nodes labeled from <code>0</code> to <code>n - 1</code>, represented as an adjacency list. For each node, <code>graph[i]</code> contains all nodes reachable directly from <code>i</code>.
   </p>
   <p>
-    <b>Output:</b> Return all nodes that are eventually safe, sorted in increasing order. A node is eventually safe if every possible path starting from that node leads to a terminal node, and never gets trapped in a cycle.
+    <span class="label">Output:</span> Return all nodes that are eventually safe, sorted in ascending order. A node is eventually safe if every path starting from that node eventually ends at a terminal node instead of getting stuck in a cycle.
   </p>
   <p>
-    <b>Key Constraints:</b> The graph is directed. A terminal node has no outgoing edges. Safety is not about immediate neighbors alone; it depends on whether <i>all</i> paths eventually terminate. This is a graph problem shaped by cycles, reachability, and reverse dependency reasoning.
+    <span class="label">Key Constraints:</span> This is a directed graph problem. The graph can be disconnected. A node may have zero outgoing edges, and that node is immediately safe. The critical condition is not “can reach a terminal node,” but “all possible paths must avoid cycles.”
   </p>
   <p>
-    <b>Edge Cases:</b> An empty graph, a graph with one node and no edges, a graph where every node is part of a cycle, a graph with disconnected components, nodes that point only to safe nodes, and nodes that point to both safe and unsafe regions.
+    <span class="label">Edge Cases:</span> An empty graph, a single terminal node, a self-loop, a pure cycle, a chain leading into a cycle, and disconnected components where some parts are safe while others are not.
   </p>
-
-  <hr />
 
   <div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
   <p>
-    This problem is really asking: which nodes cannot reach any directed cycle, even indirectly?
+    Strip away the story: this problem is asking for all nodes that do <em>not</em> belong to, and do not lead into, any directed cycle. The core challenge is to identify nodes whose outgoing edges eventually all point to already-safe nodes.
   </p>
   <p>
-    The core challenge is to identify nodes whose outgoing paths are all guaranteed to end, rather than discovering safety by exploring every path repeatedly.
+    This is a graph cycle-safety problem. The mental model is to think backwards: start from terminal nodes, mark them safe, then keep removing nodes whose outgoing neighbors are all safe. The subtle trap is to explore from each node and think “if one path reaches a terminal, the node is safe.” That is wrong. A node is safe only if <strong>every</strong> path from it finishes without entering a cycle.
   </p>
-  <p>
-    <b>Category:</b> Graphs, cycle detection, topological reasoning.
-  </p>
-  <p>
-    <b>Mental model:</b> Think of safety as a property that can be propagated backward. Terminal nodes are safe first. Then any node whose outgoing edges all lead only to safe nodes also becomes safe.
-  </p>
-  <p>
-    <b>Subtle trap:</b> Many candidates try to mark a node safe as soon as they find one safe outgoing neighbor. That is wrong. A node is safe only when <i>all</i> its outgoing edges avoid cycles.
-  </p>
-
-  <hr />
 
   <div class="section">Step 3 — Brute Force Solution</div>
   <p>
-    For every node, run a DFS and ask whether every path from it eventually terminates. If a DFS ever encounters a back-edge to a node on the current recursion stack, that path is cyclic and the starting node is unsafe.
+    The most naive approach is: for every node, run a fresh DFS and check whether any path from that node reaches a cycle. If a cycle is found on any path, mark the node unsafe; otherwise mark it safe. Without memoization, the same subgraphs are explored again and again.
   </p>
 
-  <pre>for each node u:
-    run DFS from u
-        if we revisit a node currently in the recursion stack:
+  <pre class="code">Naive idea:
+for each node u:
+    run DFS from u with a fresh visited set
+    if DFS detects a cycle on any path:
+        u is unsafe
+    else:
+        u is safe
+
+DFS(u):
+    if u is already in current recursion stack:
+        cycle found
+    if u has no outgoing edges:
+        safe
+    mark u in current recursion stack
+    for each v in graph[u]:
+        if DFS(v) says cycle:
             return unsafe
-        if all neighbors are safe:
-            return safe
-
-collect all safe nodes in increasing order</pre>
+    remove u from recursion stack
+    return safe</pre>
 
   <p>
-    <b>Time Complexity:</b> O(n + e) with memoization and visit-state arrays, because each node and edge is processed a limited number of times. Without memoization, it can degrade badly due to repeated exploration from many starting nodes.
+    <span class="label">Time Complexity:</span> <code>O(V * (V + E))</code> in the naive version, because you may traverse most of the graph again for each start node.
   </p>
   <p>
-    <b>Space Complexity:</b> O(n) for recursion stack and state arrays, excluding the input graph.
+    <span class="label">Space Complexity:</span> <code>O(V)</code> for the recursion stack and visited structure used during one DFS run.
   </p>
   <p>
-    <b>Performance bottleneck:</b> Repeated DFS work from many starting nodes, especially in graphs with shared subgraphs.
+    <span class="label">Bottleneck:</span> repeated exploration of the same nodes and edges from many different starting points.
   </p>
-
-  <hr />
 
   <div class="section">Step 4 — Intuition Building</div>
 
-  <p><b>Test Case 1</b></p>
-  <pre>Input: graph = [[1],[2],[]]
-    Node 2 is terminal.
-    Node 1 points only to 2, so 1 is safe once 2 is known safe.
-    Node 0 points only to 1, so 0 is safe once 1 is known safe.
-Action: Start from terminal nodes and propagate safety backward.
-Result: [0, 1, 2]</pre>
-
-  <p><b>Test Case 2</b></p>
-  <pre>Input: graph = [[1,2],[2,3],[5],[0],[5],[],[]]
-    Node 5 and 6 are terminal.
-    Node 2 points to 5, so 2 becomes safe.
-    Node 4 points to 5, so 4 becomes safe.
-    Node 3 points to 0, but 0 reaches the cycle 0 -> 1 -> 3 -> 0, so 3 is unsafe.
-    Node 1 points to 2 and 3; because 3 is unsafe, 1 is unsafe.
-    Node 0 points to 1 and 2; because 1 is unsafe, 0 is unsafe.
-Action: Safe status moves backward only when all outgoing edges are already safe.
-Result: [2, 4, 5, 6]</pre>
-
-  <p><b>Test Case 3 (Edge Case)</b></p>
-  <pre>Input: graph = [[1],[2],[0]]
-    Every node is part of one directed cycle.
-    No terminal node exists.
-    Nothing can be proven safe from the base case.
-Action: The backward propagation never starts.
-Result: []</pre>
-
+  <p><strong>Test Case 1</strong></p>
   <p>
-    The pattern becomes clear: safety is not naturally discovered by forward search; it is much easier to build from terminal nodes backward. That suggests reversing the graph and reducing the problem to degree elimination.
-  </p>
-  <p>
-    A future problem should make you think of this same approach when “goodness” or “safety” depends on all outgoing choices, and terminal states can seed a backward propagation.
+    <span class="label">Input:</span> <code>[ [1,2], [2,3], [5], [0], [5], [], [] ]</code>
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Node <code>5</code> and <code>6</code> are terminal.
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;The useful question is not “who can reach a terminal?” but “who becomes safe only after all outgoing neighbors are safe?”
+    <br />
+    <span class="label">Action:</span> Start from terminal nodes and peel backward.
+    <br />
+    <span class="label">Result:</span> Safe nodes are <code>2, 4, 5, 6</code>.
   </p>
 
-  <hr />
+  <p><strong>Test Case 2</strong></p>
+  <p>
+    <span class="label">Input:</span> <code>[ [1], [2], [0] ]</code>
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Every node belongs to a cycle.
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;No terminal node exists, so nothing can be peeled.
+    <br />
+    <span class="label">Action:</span> The queue of terminal nodes starts empty.
+    <br />
+    <span class="label">Result:</span> No safe nodes.
+  </p>
+
+  <p><strong>Test Case 3 (Edge Case)</strong></p>
+  <p>
+    <span class="label">Input:</span> <code>[ [0], [] ]</code>
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Node <code>0</code> has a self-loop, so it is immediately unsafe.
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Node <code>1</code> is terminal, so it is safe.
+    <br />
+    <span class="label">Action:</span> Mark only terminal nodes first; never let a self-loop node become safe unless its outgoing count drops to zero, which will never happen here.
+    <br />
+    <span class="label">Result:</span> Safe nodes are <code>1</code> only.
+  </p>
+
+  <p>
+    The pattern to notice in future problems is: <strong>terminal states + nodes that become valid only after all outgoing neighbors are valid</strong>. That is the signal to think of reverse graph traversal and topological peeling.
+  </p>
 
   <div class="section">Step 5 — Optimized Solution</div>
   <p>
-    This has one best-known optimization: reverse the graph and perform topological elimination from terminal nodes.
+    This problem has one clean optimal solution: reverse the graph and run Kahn’s algorithm from terminal nodes. Instead of asking “which nodes can reach a cycle?”, ask “which nodes can be proven safe by eliminating all outgoing danger?” A node becomes safe only when every node it points to is already safe.
   </p>
   <p>
-    <b>Algorithm name:</b> Reverse graph + Kahn-style BFS on outdegree.
-  </p>
-  <p>
-    <b>Key insight:</b> A node becomes safe exactly when all of its outgoing edges lead to safe nodes. In the reversed graph, that means we can start from nodes with outdegree 0 and keep removing dependencies backward.
+    This is essentially topological trimming on the reversed graph.
   </p>
 
-  <pre>Build reverse graph:
-    for each edge u -> v:
-        add u to reverse[v]
-        outdegree[u]++
-
-Initialize queue with all nodes having outdegree 0.
-
-While queue is not empty:
-    pop node v
-    mark v safe
-    for each predecessor u in reverse[v]:
-        outdegree[u]--
-        if outdegree[u] becomes 0:
-            push u
-
-Collect all safe nodes in increasing order.</pre>
-
-  <p><b>Dry Run</b></p>
-  <pre>Input: graph = [[1,2],[2,3],[5],[0],[5],[],[]]
-
-Initial outdegree:
-0:2, 1:2, 2:1, 3:1, 4:1, 5:0, 6:0
-
-Queue starts with: [5, 6]
-
-Pivot step 1:
-  Pop 5
-  Safe now: {5}
-  Reverse neighbors of 5: 2, 4
-  Decrease outdegree[2]: 1 -> 0
-  Decrease outdegree[4]: 1 -> 0
-  Queue: [6, 2, 4]
-
-Pivot step 2:
-  Pop 6
-  Safe now: {5, 6}
-  No reverse neighbors
-  Queue: [2, 4]
-
-Pivot step 3:
-  Pop 2
-  Safe now: {2, 5, 6}
-  Reverse neighbors of 2: 0, 1
-  Decrease outdegree[0]: 2 -> 1
-  Decrease outdegree[1]: 2 -> 1
-  Queue: [4]
-
-Pivot step 4:
-  Pop 4
-  Safe now: {2, 4, 5, 6}
-  No reverse neighbors
-  Queue: []
-
-Final safe nodes: [2, 4, 5, 6]</pre>
-
-  <p>
-    <b>Extreme edge case handling:</b> For a fully cyclic graph like <code>[ [1], [2], [0] ]</code>, no node starts with outdegree 0, so the queue is empty immediately. The algorithm correctly returns an empty list without any special-case code.
-  </p>
-
-  <p>
-    <b>Time Complexity:</b> O(n + e). We build the reverse graph in linear time, process each node at most once in the queue, and each edge is examined once when its destination becomes safe.
-  </p>
-  <p>
-    <b>Space Complexity:</b> O(n + e). The reverse graph stores all edges, and the outdegree array, queue, and safe-marker array each use O(n).
-  </p>
-
-  <hr />
-
-  <div class="section">C++17 Code</div>
-  <pre>vector&lt;int&gt; eventualSafeNodes(vector&lt;vector&lt;int&gt;&gt;&amp; graph) {
+  <pre class="code">vector&lt;int&gt; eventualSafeNodes(vector&lt;vector&lt;int&gt;&gt;&amp; graph) {
     int n = graph.size();
     vector&lt;vector&lt;int&gt;&gt; rev(n);
-    vector&lt;int&gt; outdegree(n, 0);
+    vector&lt;int&gt; outdeg(n, 0);
+    queue&lt;int&gt; q;
 
     for (int u = 0; u &lt; n; ++u) {
-        outdegree[u] = graph[u].size();
+        outdeg[u] = graph[u].size();
         for (int v : graph[u]) {
             rev[v].push_back(u);
         }
     }
 
-    queue&lt;int&gt; q;
     for (int i = 0; i &lt; n; ++i) {
-        if (outdegree[i] == 0) q.push(i);
+        if (outdeg[i] == 0) q.push(i);
     }
 
-    vector&lt;bool&gt; safe(n, false);
-
+    vector&lt;int&gt; safe;
     while (!q.empty()) {
         int node = q.front();
         q.pop();
-        safe[node] = true;
+        safe.push_back(node);
 
         for (int parent : rev[node]) {
-            if (--outdegree[parent] == 0) {
+            if (--outdeg[parent] == 0) {
                 q.push(parent);
             }
         }
     }
 
-    vector&lt;int&gt; ans;
-    for (int i = 0; i &lt; n; ++i) {
-        if (safe[i]) ans.push_back(i);
-    }
-    return ans;
+    sort(safe.begin(), safe.end());
+    return safe;
 }</pre>
 
+  <p><strong>Why this works</strong></p>
   <p>
-    <b>Why this works:</b> a node becomes safe only when every outgoing edge has been “neutralized” by reaching already-safe nodes. The reverse graph lets us update exactly those parents that depend on a newly safe node. This is the cleanest way to detect eventual safety without repeated DFS from every starting node. :contentReference[oaicite:0]{index=0}
+    A node is unsafe only if it can reach a cycle. In reverse, a node is safe if all of its outgoing neighbors have already been proven safe. That gives us a dependency-removal process:
   </p>
+  <p>
+    terminal nodes are safe first; then any node whose outgoing count drops to zero becomes safe next; then its parents may become safe; and so on.
+  </p>
+
+  <p><strong>Dry Run on the main sample</strong></p>
+  <p>
+    <span class="label">Input:</span> <code>[ [1,2], [2,3], [5], [0], [5], [], [] ]</code>
+    <br />
+    <span class="label">Initial outdegree:</span> <code>0:2, 1:2, 2:1, 3:1, 4:1, 5:0, 6:0</code>
+    <br />
+    <span class="label">Initial queue:</span> <code>[5, 6]</code>
+  </p>
+
+  <p>
+    <span class="label">Pivot / Start:</span> nodes <code>5</code> and <code>6</code> are terminal, so they are safe immediately.
+    <br />
+    <span class="label">Process 5:</span> parents are <code>2</code> and <code>4</code>.
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;<code>outdeg[2]: 1 → 0</code>, so push <code>2</code>.
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;<code>outdeg[4]: 1 → 0</code>, so push <code>4</code>.
+    <br />
+    <span class="label">Process 6:</span> no parents.
+    <br />
+    <span class="label">Process 2:</span> parents are <code>0</code> and <code>1</code>.
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;<code>outdeg[0]: 2 → 1</code>.
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;<code>outdeg[1]: 2 → 1</code>.
+    <br />
+    <span class="label">Process 4:</span> parent is <code>1</code>.
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;<code>outdeg[1]: 1 → 0</code>, so push <code>1</code>.
+    <br />
+    <span class="label">Process 1:</span> parent is <code>0</code>.
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;<code>outdeg[0]: 1 → 0</code>, so push <code>0</code>.
+    <br />
+    <span class="label">Process 0:</span> no more useful parents.
+    <br />
+    <span class="label">Final safe set:</span> <code>[2, 4, 5, 6]</code>
+  </p>
+
+  <p><strong>How the self-loop edge case behaves</strong></p>
+  <p>
+    For <code>[ [0], [] ]</code>, only node <code>1</code> starts in the queue. Node <code>0</code> never enters it, because its outgoing edge points back to itself, so its outdegree never becomes zero. That is exactly the correct behavior.
+  </p>
+
+  <p><strong>Time Complexity:</strong> <code>O(V + E)</code>. Building the reverse graph touches every edge once. The queue process also removes each node once and inspects each reversed edge once.</p>
+  <p><strong>Space Complexity:</strong> <code>O(V + E)</code>. The reverse graph stores all edges, and the queue / outdegree arrays store <code>O(V)</code> extra data.</p>
+  <p><strong>Algorithm Name:</strong> Reverse graph + Kahn’s algorithm on outdegree.</p>
+
+  <hr />
+
+  <p style="font-size:11pt;">
+    Reference context from your uploaded instruction template: :contentReference[oaicite:0]{index=0}
+  </p>
+
 </body>
 </html>

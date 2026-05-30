@@ -1,0 +1,425 @@
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      font-family: 'Times New Roman', serif;
+      font-size: 12pt;
+      line-height: 1.8;
+      max-width: 760px;
+      margin: 40px auto;
+      color: #000;
+    }
+    .title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 18px;
+    }
+    .section {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+    pre {
+      font-family: Consolas, monospace;
+      font-size: 11pt;
+      background: #f5f5f5;
+      border-left: 3px solid #bbb;
+      padding: 10px 14px;
+      white-space: pre;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+    .subhead {
+      font-weight: bold;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 18px 0;
+    }
+    .indent {
+      margin-left: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="title">LeetCode 1631 — Path With Minimum Effort</div>
+
+<div class="section">Step 1 — Problem Statement</div>
+
+<p>
+  <span class="subhead">Input:</span>
+  You are given a grid <b>heights</b> of size <b>m × n</b>. You start at the top-left cell <b>(0, 0)</b> and want to reach the bottom-right cell <b>(m - 1, n - 1)</b>. From any cell, you may move up, down, left, or right.
+</p>
+
+<p>
+  <span class="subhead">Output:</span>
+  Return the minimum possible effort required for a path from start to end. The effort of a path is not the sum of all moves; it is the <b>maximum absolute difference</b> between heights of adjacent cells along that path.
+</p>
+
+<p>
+  <span class="subhead">Key Constraints:</span>
+  The grid is small enough for graph algorithms on an implicit graph, but large enough that brute-force path enumeration is impossible. Heights can be large, so the absolute differences can also be large. The real structure is a weighted graph with at most <b>m × n</b> nodes and at most about <b>4mn</b> edges.
+</p>
+
+<p>
+  <span class="subhead">Edge Cases:</span>
+  A <b>1 × 1</b> grid has no move at all, so the answer is <b>0</b>. A single row or single column has exactly one path. If all heights are identical, every edge has cost <b>0</b>, so the answer is <b>0</b>. If there is one very steep cell among otherwise flat terrain, the optimal route may detour around it. If multiple paths have the same minimum effort, any of them is valid, but the returned value must still be that minimum. Large height values matter because the difference can be big, so use a type safe for differences.
+</p>
+
+<hr />
+
+<div class="section">Step 2 — Problem Understanding &amp; Approach Overview</div>
+
+<p>
+  Strip away the grid story and this becomes: <b>find a path from source to destination whose worst edge is as small as possible</b>. This is a classic <b>minimax path</b> problem on a weighted graph.
+</p>
+
+<p>
+  The core challenge is that the path score is <b>not additive</b>. When you extend a path by one edge, the new score becomes the maximum of the old score and the new edge weight. That makes ordinary shortest-path intuition tricky at first.
+</p>
+
+<p>
+  <span class="subhead">Category:</span>
+  Graph, shortest path on an implicit grid, minimax optimization, Dijkstra-style reasoning.
+</p>
+
+<p>
+  <span class="subhead">Mental Model:</span>
+  Imagine every move has a “pain” equal to the height difference. A path is good if its <b>worst pain</b> is small. You are not trying to minimize total pain; you are trying to minimize the most painful step.
+</p>
+
+<p>
+  <span class="subhead">Subtle Trap:</span>
+  Many candidates try plain BFS because movement is on a grid, or they try ordinary Dijkstra by summing edge weights. Both are wrong for the objective. The correct state is the <b>minimum possible bottleneck</b> to each cell, not a distance sum.
+</p>
+
+<hr />
+
+<div class="section">Step 3 — Brute Force Solution</div>
+
+<p>
+  The most naive way is to enumerate every possible simple path from start to end, compute the maximum edge difference on that path, and take the minimum among all paths.
+</p>
+
+<pre>
+DFS(r, c, currentMax):
+    if (r, c) is destination:
+        update global answer with currentMax
+        return
+
+    mark (r, c) as visited
+
+    for each valid neighbor (nr, nc):
+        if not visited[nr][nc]:
+            edgeCost = abs(heights[r][c] - heights[nr][nc])
+            nextMax = max(currentMax, edgeCost)
+            DFS(nr, nc, nextMax)
+
+    unmark (r, c)
+</pre>
+
+<p>
+  This is correct because it checks every possible route, but it is completely impractical. The performance bottleneck is the number of paths, which grows exponentially. In a grid, the number of simple paths can explode extremely fast, so even moderate input sizes become impossible.
+</p>
+
+<p>
+  <span class="subhead">Time Complexity:</span>
+  Exponential in the number of cells. A rough upper bound is often described as <b>O(4<sup>mn</sup>)</b> in spirit, though the exact count depends on path constraints. The key point is that it is exponential and unusable.
+</p>
+
+<p>
+  <span class="subhead">Space Complexity:</span>
+  <b>O(mn)</b> for recursion stack and visited tracking.
+</p>
+
+<hr />
+
+<div class="section">Step 4 — Intuition Building</div>
+
+<div class="indent">
+  <p class="subhead">Test Case 1</p>
+  <p>
+    Input: <b>7</b>
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Start is already the destination
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;There are no edges, so there is no height difference to pay
+    <br />
+    Action: return <b>0</b>
+    <br />
+    Result: <b>0</b>
+  </p>
+</div>
+
+<div class="indent">
+  <p class="subhead">Test Case 2</p>
+  <p>
+    Input:
+    <br />
+    5 5
+    <br />
+    5 5
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Every adjacent move has difference 0
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Any route has the same effort
+    <br />
+    Action: move to the destination through any path
+    <br />
+    Result: <b>0</b>
+  </p>
+</div>
+
+<div class="indent">
+  <p class="subhead">Test Case 3</p>
+  <p>
+    Input:
+    <br />
+    1 2 2
+    <br />
+    3 8 2
+    <br />
+    5 3 5
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Now there are multiple routes
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;One route can have a small local step but a huge cliff later
+    <br />
+    &nbsp;&nbsp;&nbsp;&nbsp;Another route can have slightly larger individual steps but avoid the cliff
+  </p>
+
+  <p>
+    Route A:
+    <br />
+    Right → Right → Down → Down
+    <br />
+    Effort along edges: 1, 0, 0, 3
+    <br />
+    Worst step = <b>3</b>
+  </p>
+
+  <p>
+    Route B:
+    <br />
+    Down → Down → Right → Right
+    <br />
+    Effort along edges: 2, 2, 2, 2
+    <br />
+    Worst step = <b>2</b>
+  </p>
+
+  <p>
+    Action: choose the route whose <b>maximum</b> edge difference is smaller
+    <br />
+    Result: <b>2</b>
+  </p>
+</div>
+
+<p>
+  This is the key discovery: the score of a path is controlled by its <b>worst edge</b>. That means we do not care about accumulating cost the way ordinary shortest path does. We care about whether a route can keep every step under a threshold, or how small that threshold can be.
+</p>
+
+<p>
+  A very useful signal in future problems is this: <b>“minimize the maximum edge/step/fee/effort on a path.”</b> That almost always points to a minimax graph pattern, often solved by Dijkstra on a modified cost, or by binary search on the answer plus feasibility checking.
+</p>
+
+<hr />
+
+<div class="section">Step 5 — Optimized Solution</div>
+
+<p>
+  There are <b>two meaningful optimization levels</b> here. The first one turns the problem into a feasibility question and uses binary search. The second one is the fully optimal and most elegant graph solution: <b>Dijkstra on a bottleneck cost</b>.
+</p>
+
+<div class="subhead">Optimized Solution 1 — Binary Search on Answer + BFS/DFS Feasibility</div>
+
+<p>
+  The insight is: if we guess an effort limit <b>X</b>, we can check whether there exists a path from start to end using only edges whose height difference is at most <b>X</b>. This check is monotonic:
+  if a path exists for X, then it also exists for any larger value.
+  That monotonicity makes binary search valid.
+</p>
+
+<pre>
+low = 0
+high = maximum absolute difference between any adjacent cells
+
+while low &lt; high:
+    mid = (low + high) / 2
+    if destination reachable using only edges with diff &lt;= mid:
+        high = mid
+    else:
+        low = mid + 1
+
+return low
+</pre>
+
+<p>
+  <span class="subhead">Time Complexity:</span>
+  Each feasibility check is <b>O(mn)</b>. Binary search runs for <b>O(log D)</b> steps, where <b>D</b> is the maximum possible edge difference. So total complexity is <b>O(mn log D)</b>.
+</p>
+
+<p>
+  <span class="subhead">Space Complexity:</span>
+  <b>O(mn)</b> for visited/state during BFS or DFS.
+</p>
+
+<p>
+  <span class="subhead">What Was Eliminated Compared to Brute Force:</span>
+  We no longer enumerate paths. Instead, we only ask whether a threshold is sufficient, which collapses an exponential search space into a polynomial number of grid traversals.
+</p>
+
+<div class="subhead">Optimized Solution 2 — Dijkstra on a Minimax Cost Function</div>
+
+<p>
+  This is the best-known direct solution. Treat each cell as a graph node, and the edge weight between adjacent cells as the absolute height difference. The cost of a path is not the sum of edge weights; it is the <b>maximum edge weight seen so far</b>.
+</p>
+
+<p>
+  The Dijkstra idea still works because when you extend a path, the new path cost is
+  <b>max(currentEffort, edgeCost)</b>,
+  which never decreases. That monotonic behavior is exactly what Dijkstra needs for label-setting.
+</p>
+
+<p>
+  <span class="subhead">C++17 Code:</span>
+</p>
+
+<pre>
+int minimumEffortPath(vector&lt;vector&lt;int&gt;&gt;&amp; heights) {
+    int m = heights.size();
+    int n = heights[0].size();
+
+    vector&lt;vector&lt;int&gt;&gt; dist(m, vector&lt;int&gt;(n, INT_MAX));
+    using State = pair&lt;int, pair&lt;int, int&gt;&gt;; // {effort, {r, c}}
+    priority_queue&lt;State, vector&lt;State&gt;, greater&lt;State&gt;&gt; pq;
+
+    dist[0][0] = 0;
+    pq.push({0, {0, 0}});
+
+    int dr[4] = {1, -1, 0, 0};
+    int dc[4] = {0, 0, 1, -1};
+
+    while (!pq.empty()) {
+        auto [effort, cell] = pq.top();
+        pq.pop();
+
+        int r = cell.first;
+        int c = cell.second;
+
+        if (effort != dist[r][c]) continue;
+        if (r == m - 1 &amp;&amp; c == n - 1) return effort;
+
+        for (int k = 0; k &lt; 4; k++) {
+            int nr = r + dr[k];
+            int nc = c + dc[k];
+
+            if (nr &lt; 0 || nc &lt; 0 || nr &gt;= m || nc &gt;= n) continue;
+
+            int edgeCost = abs(heights[r][c] - heights[nr][nc]);
+            int nextEffort = max(effort, edgeCost);
+
+            if (nextEffort &lt; dist[nr][nc]) {
+                dist[nr][nc] = nextEffort;
+                pq.push({nextEffort, {nr, nc}});
+            }
+        }
+    }
+
+    return 0;
+}
+</pre>
+
+<p>
+  <span class="subhead">Why the data structure works:</span>
+  The priority queue always expands the cell with the smallest known bottleneck effort first. If a cell is popped with effort <b>e</b>, then there is no better path to that cell that can appear later, because any later path would have effort at least <b>e</b>. This is the same core invariant as Dijkstra, but with a different relaxation rule.
+</p>
+
+<p>
+  <span class="subhead">Dry Run on the Classic Example:</span>
+</p>
+
+<pre>
+Heights:
+1 2 2
+3 8 2
+5 3 5
+
+Initial:
+dist[0][0] = 0
+pq = [(0, 0, 0)]
+
+Step 1: Pop (0, 0, 0)
+    Neighbors:
+    (0,1): edge = |1-2| = 1, nextEffort = max(0, 1) = 1
+    (1,0): edge = |1-3| = 2, nextEffort = max(0, 2) = 2
+    Push both
+
+Step 2: Pop (1, 0, 1)
+    This is the smallest effort in the queue
+    Neighbors:
+    (0,2): edge = |2-2| = 0, nextEffort = max(1, 0) = 1
+    (1,1): edge = |2-8| = 6, nextEffort = max(1, 6) = 6
+    Push both
+
+Step 3: Pop (1, 0, 2)
+    Neighbors:
+    (1,2): edge = |2-2| = 0, nextEffort = max(1, 0) = 1
+    Push
+
+Step 4: Pop (1, 1, 2)
+    Neighbors:
+    (2,2): edge = |2-5| = 3, nextEffort = max(1, 3) = 3
+    (2,1): edge = |2-3| = 1, nextEffort = max(1, 1) = 1
+    Push both
+
+Step 5: Pop (1, 2, 1)
+    Neighbors:
+    (2,1): edge = |2-3| = 1, nextEffort = max(1, 1) = 1
+    Update if better
+
+Step 6: Eventually the destination (2,2) is reached with effort 2
+    Better than 3 through the earlier route
+    Final answer = 2
+</pre>
+
+<p>
+  <span class="subhead">Edge Case Check — 1 × 1 Grid:</span>
+  The queue starts with the source, and the source is also the destination. We return <b>0</b> immediately. No special hacks are needed.
+</p>
+
+<p>
+  <span class="subhead">Time Complexity:</span>
+  The grid has <b>V = mn</b> vertices and <b>E = O(mn)</b> edges. Each relaxation may push into the heap, and each pop/push costs <b>log(mn)</b>. So the total complexity is <b>O(mn log(mn))</b>.
+</p>
+
+<p>
+  <span class="subhead">Space Complexity:</span>
+  <b>O(mn)</b> for the distance table and the priority queue.
+</p>
+
+<p>
+  <span class="subhead">Name of the Algorithm:</span>
+  <b>Dijkstra’s algorithm on a minimax / bottleneck path metric</b>.
+</p>
+
+<hr />
+
+<div class="section">Final Interview Intuition</div>
+
+<p>
+  The one-line memory hook for this problem is:
+  <b>“Every path has a bottleneck; minimize the bottleneck.”</b>
+</p>
+
+<p>
+  If you see a problem where the path score is defined by the <b>maximum</b> edge/step cost rather than the sum, think immediately about:
+  <b>binary search + reachability</b> or <b>Dijkstra with max-based relaxation</b>.
+</p>
+
+</body>
+</html>
